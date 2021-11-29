@@ -1,0 +1,400 @@
+---
+title: "calcul_erreur_power_purdy_skiba"
+author: "Jeremy Briand"
+date: "26/02/2021"
+output: html_document
+---
+
+Code pour comparer l'erreur de puissance entre Purdy et Skiba qui permet de générer représentations de type bland-altman
+
+Loader les packages
+
+```{r}
+library(easypackages)
+packages("dplyr", "tidyr", "readr", "readxl", "plot3D", "plot3Drgl", "hms", "plotly", "htmlwidgets")
+library(trackeR)
+library(zoo)
+```
+
+Importer les fonctions pertinentes pour la suite du code
+
+
+Importer les profils d'endurance
+
+```{r}
+sprinter <- read_csv("profils de cyclistes/sprinteur.csv")
+
+time_trialist <- read_csv("profils de cyclistes/time-trial.csv")
+
+pursuiter <- read_csv("profils de cyclistes/pursuit.csv")  
+
+all_around <- read_csv("profils de cyclistes/all-around.csv")
+
+```
+
+
+Fonction qui permet de trouver la puissance correspondant à une durée donnée selon un profil d'endurance
+
+```{r}
+
+
+power_from_time <- function(Time, end_profile){
+
+  line <- end_profile %>%
+    filter(time == Time)
+  power <- as.numeric(line[, 2])
+  return(power)
+}
+```
+
+
+```{r}
+   #fonction qui calcule le W prime balance de l'entraînement
+
+W_bal_computer <- function(Nrep, interval_power, rest_power, interval_duration, rest){
+  power <- c(rep(c(rep(interval_power, times = interval_duration), rep(rest_power, times = rest)), times = Nrep-1), rep(interval_power, times = interval_duration))
+  seconds <- 1:length(power)
+  
+  origin <- as.POSIXct("09/01/2017 01:37:33", format = "%m/%d/%Y %H:%M:%S")
+  
+  sec <- as.POSIXct(seconds, origin = origin)
+  
+  training <- zoo(power, sec)
+  
+  Wexp <- Wexp(training, w0 = Wprime, cp = CP, version = "2015")
+  Wexp_frame <- as.data.frame(Wexp)
+  
+  training_index<- length(Wexp$wprime)
+  
+  Wexp_training <- Wexp_frame$wprime[training_index]
+  
+  Wbal <- Wprime - Wexp_training
+  
+  return(Wbal)
+}
+```
+
+
+calcul  séances sprinter
+
+
+```{r}
+
+ 
+    PAM <- power_from_time(300, sprinter)
+     
+     #joindre les 4 possibilités d'entraînements 
+     
+     trainings <- read.csv("seances_purdy/seances.csv")
+     
+     # ajouter le pointage, la PAM et la vitesse maximale pouvant être maintenue sur la durée de l'entraînement au dataframe de l'entraînement
+     
+     trainings <- trainings%>%
+       mutate(profil = "sprinter",
+              PAM = PAM,
+              rest_power = PAM/2,
+              duration = Nrep*interval_duration+ (Nrep-1)*rest
+              )
+    #filtrer les durées totales des entraînements, plus grand que 30s, plus petit que 90 min
+     
+     trainings <- trainings %>%
+        filter(duration >= 30,
+               duration <= 60*90)
+    
+      # Créer une fonction qui calcule le W'balance d'une séance -------------------------------------------------------------------------
+      
+       #Trouver le temps correspondant aux distances par rapport à certaines durées pour trouver la CP et le W'
+    
+    durees <- c(180, 300,450, 600, 700, 900)
+#trouver le temps associé
+power <- c()
+for(i in durees){
+  p <- power_from_time(i, sprinter)
+  power <- c(power, p)
+}
+
+#Calculer CP et W' en faisant une régression energy vs temps
+
+
+energy <- power*durees
+model_cp <- lm(energy ~ durees)
+Wprime <- summary(model_cp)$coefficients[1]
+CP <- summary(model_cp)$coefficients[2]
+
+
+
+
+#Pour chaque séance créer un array de puissances. On voudra calculer le W'balance de chaque possibilité et choisir celui pour lequel le W' balance est le plus proche de 0 
+
+w_bal_powers <- seq(0.8, 1.4, 0.2)*PAM
+    
+
+
+
+#loop sur chaque puissance de l'array pour chaque entraînement
+
+  Wbal_frame <- data.frame()
+for (k in 1:length(trainings$Nrep)){
+
+  
+ Wbal <- c()
+  for(h in w_bal_powers){
+  s <- W_bal_computer(trainings$Nrep[k], h, trainings$rest_power[k], trainings$interval_duration[k], trainings$rest[k])
+  Wbal <- c(Wbal, s)
+ 
+  }
+  W_frame <- data.frame(power_skiba = w_bal_powers, 
+                        Wbal_skiba = Wbal
+                       )
+ 
+  # W_frame <- W_frame %>%
+  #   mutate(percent_w_bal = (Wbal_skiba/Wprime)*100)%>%
+  #   filter(abs(Wbal_skiba) == min(abs(Wbal_skiba)) )
+ 
+  
+  zero_finder <- lm(data = W_frame, formula = power_skiba ~ Wbal_skiba)
+p_skiba <- data.frame(
+  Wbal_skiba = 0,
+  power_skiba = predict(zero_finder, newdata = data.frame(Wbal_skiba = 0)))
+
+ 
+
+
+  Wbal_frame <- bind_rows(Wbal_frame, p_skiba)
+  print(k)
+}
+
+#Joindre les colonnes de W'balance et de puissance skiba aux trainings
+      
+      trainings_2 <- bind_cols(trainings, Wbal_frame)
+      
+      Wbal_trainings_2 <- c()
+      for(i in 1:length(trainings_2$Nrep)){
+        w <- W_bal_computer( trainings_2$Nrep[i],trainings_2$power_skiba[i], trainings_2$rest_power[i], trainings_2$interval_duration[i], trainings_2$rest[i])
+        Wbal_trainings_2 <- c(Wbal_trainings_2, w)
+      }
+      
+      Wbal_check_sprint <- data.frame(Wbal = Wbal_trainings_2)
+  
+    trainings_end_moyenne <- trainings_2
+     
+     write.csv(trainings_end_moyenne, "seances_purdy/trainings_sprinter_skiba.csv")
+   
+```
+
+
+
+All-around
+
+```{r}
+
+ 
+    PAM <- power_from_time(300, all_around)
+     
+     #joindre les 4 possibilités d'entraînements 
+     
+     trainings <- read.csv("seances_purdy/seances.csv")
+     
+     # ajouter le pointage, la PAM et la vitesse maximale pouvant être maintenue sur la durée de l'entraînement au dataframe de l'entraînement
+     
+     trainings <- trainings%>%
+       mutate(profil = "all around",
+              PAM = PAM,
+              rest_power = PAM/2,
+              duration = Nrep*interval_duration+ (Nrep-1)*rest
+              )
+    #filtrer les durées totales des entraînements, plus grand que 30s, plus petit que 90 min
+     
+     trainings <- trainings %>%
+        filter(duration >= 30,
+               duration <= 60*90)
+    
+      # Créer une fonction qui calcule le W'balance d'une séance -------------------------------------------------------------------------
+      
+       #Trouver le temps correspondant aux distances par rapport à certaines durées pour trouver la CP et le W'
+    
+    durees <- c(180, 300,450, 600, 700, 900)
+#trouver le temps associé
+power <- c()
+for(i in durees){
+  p <- power_from_time(i, all_around)
+  power <- c(power, p)
+}
+
+#Calculer CP et W' en faisant une régression energy vs temps
+
+
+energy <- power*durees
+model_cp <- lm(energy ~ durees)
+Wprime <- summary(model_cp)$coefficients[1]
+CP <- summary(model_cp)$coefficients[2]
+
+
+
+
+#Pour chaque séance créer un array de puissances. On voudra calculer le W'balance de chaque possibilité et choisir celui pour lequel le W' balance est le plus proche de 0 
+
+w_bal_powers <- seq(0.8, 1.4, 0.2)*PAM
+    
+
+
+
+#loop sur chaque puissance de l'array pour chaque entraînement
+
+  Wbal_frame <- data.frame()
+for (k in 1:length(trainings$Nrep)){
+
+  
+ Wbal <- c()
+  for(h in w_bal_powers){
+  s <- W_bal_computer(trainings$Nrep[k], h, trainings$rest_power[k], trainings$interval_duration[k], trainings$rest[k])
+  Wbal <- c(Wbal, s)
+ 
+  }
+  W_frame <- data.frame(power_skiba = w_bal_powers, 
+                        Wbal_skiba = Wbal
+                       )
+ 
+  # W_frame <- W_frame %>%
+  #   mutate(percent_w_bal = (Wbal_skiba/Wprime)*100)%>%
+  #   filter(abs(Wbal_skiba) == min(abs(Wbal_skiba)) )
+ 
+  
+  zero_finder <- lm(data = W_frame, formula = power_skiba ~ Wbal_skiba)
+p_skiba <- data.frame(
+  Wbal_skiba = 0,
+  power_skiba = predict(zero_finder, newdata = data.frame(Wbal_skiba = 0)))
+
+ 
+
+
+  Wbal_frame <- bind_rows(Wbal_frame, p_skiba)
+  print(k)
+}
+
+#Joindre les colonnes de W'balance et de puissance skiba aux trainings
+      
+      trainings_2 <- bind_cols(trainings, Wbal_frame)
+      
+      Wbal_trainings_2 <- c()
+      for(i in 1:length(trainings_2$Nrep)){
+        w <- W_bal_computer( trainings_2$Nrep[i],trainings_2$power_skiba[i], trainings_2$rest_power[i], trainings_2$interval_duration[i], trainings_2$rest[i])
+        Wbal_trainings_2 <- c(Wbal_trainings_2, w)
+      }
+      
+      Wbal_check_allaround <- data.frame(Wbal = Wbal_trainings_2)
+      
+  
+    trainings_end_moyenne <- trainings_2
+     
+     write.csv(trainings_end_moyenne, "seances_purdy/trainings_allaround_skiba.csv")
+   
+```
+
+time trialist
+
+```{r}
+
+ 
+    PAM <- power_from_time(300, time_trialist)
+     
+     #joindre les 4 possibilités d'entraînements 
+     
+     trainings <- read.csv("seances_purdy/seances.csv")
+     
+     # ajouter le pointage, la PAM et la vitesse maximale pouvant être maintenue sur la durée de l'entraînement au dataframe de l'entraînement
+     
+     trainings <- trainings%>%
+       mutate(profil = "time trialist",
+              PAM = PAM,
+              rest_power = PAM/2,
+              duration = Nrep*interval_duration+ (Nrep-1)*rest
+              )
+    #filtrer les durées totales des entraînements, plus grand que 30s, plus petit que 90 min
+     
+     trainings <- trainings %>%
+        filter(duration >= 30,
+               duration <= 60*90)
+    
+      # Créer une fonction qui calcule le W'balance d'une séance -------------------------------------------------------------------------
+      
+       #Trouver le temps correspondant aux distances par rapport à certaines durées pour trouver la CP et le W'
+    
+    durees <- c(180, 300,450, 600, 700, 900)
+#trouver le temps associé
+power <- c()
+for(i in durees){
+  p <- power_from_time(i, time_trialist)
+  power <- c(power, p)
+}
+
+#Calculer CP et W' en faisant une régression energy vs temps
+
+
+energy <- power*durees
+model_cp <- lm(energy ~ durees)
+Wprime <- summary(model_cp)$coefficients[1]
+CP <- summary(model_cp)$coefficients[2]
+
+
+
+
+#Pour chaque séance créer un array de puissances. On voudra calculer le W'balance de chaque possibilité et choisir celui pour lequel le W' balance est le plus proche de 0 
+
+w_bal_powers <- seq(0.8, 1.4, 0.2)*PAM
+    
+
+
+
+#loop sur chaque puissance de l'array pour chaque entraînement
+
+  Wbal_frame <- data.frame()
+for (k in 1:length(trainings$Nrep)){
+
+  
+ Wbal <- c()
+  for(h in w_bal_powers){
+  s <- W_bal_computer(trainings$Nrep[k], h, trainings$rest_power[k], trainings$interval_duration[k], trainings$rest[k])
+  Wbal <- c(Wbal, s)
+ 
+  }
+  W_frame <- data.frame(power_skiba = w_bal_powers, 
+                        Wbal_skiba = Wbal
+                       )
+ 
+  # W_frame <- W_frame %>%
+  #   mutate(percent_w_bal = (Wbal_skiba/Wprime)*100)%>%
+  #   filter(abs(Wbal_skiba) == min(abs(Wbal_skiba)) )
+ 
+  
+  zero_finder <- lm(data = W_frame, formula = power_skiba ~ Wbal_skiba)
+p_skiba <- data.frame(
+  Wbal_skiba = 0,
+  power_skiba = predict(zero_finder, newdata = data.frame(Wbal_skiba = 0)))
+
+ 
+
+
+  Wbal_frame <- bind_rows(Wbal_frame, p_skiba)
+  print(k)
+}
+
+#Joindre les colonnes de W'balance et de puissance skiba aux trainings
+      
+      trainings_2 <- bind_cols(trainings, Wbal_frame)
+      
+      Wbal_trainings_2 <- c()
+      for(i in 1:length(trainings_2$Nrep)){
+        w <- W_bal_computer( trainings_2$Nrep[i],trainings_2$power_skiba[i], trainings_2$rest_power[i], trainings_2$interval_duration[i], trainings_2$rest[i])
+        Wbal_trainings_2 <- c(Wbal_trainings_2, w)
+      }
+      
+      Wbal_check_timetrial <- data.frame(Wbal = Wbal_trainings_2)
+      
+  
+    trainings_end_moyenne <- trainings_2
+     
+     write.csv(trainings_end_moyenne, "seances_purdy/trainings_timetrialist_skiba.csv")
+   
+```
+

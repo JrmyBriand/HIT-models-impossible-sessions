@@ -1,0 +1,497 @@
+---
+title: "creation des profils"
+author: "Jeremy Briand"
+date: "14/05/2021"
+output: html_document
+---
+Creation des profils de puissance d'athlètes ayant une endurance faible, moyenne et élevée, mais un même temps au 3000m 
+
+Loader les packages
+
+```{r}
+library(easypackages)
+packages("dplyr", "tidyr", "readr", "readxl", "plot3D", "plot3Drgl", "hms", "plotly", "htmlwidgets")
+library(lubridate)
+library(kimisc)
+library(mgcv)
+```
+
+
+sprinteur
+
+```{r}
+
+temps <- c(1/60, 0.25, 0.5, 1, 2, 3, 4, 5, 10, 20, 30, 45, 60, 90, 120, 180, 240)*60
+
+weight <- 70
+
+#Données  pour un athlète d'endurance moyenne
+TMAP <- 300 # selon billat # ajuster TMAP selon la MAP...
+BMR <- 1.2
+k1 <- 30
+k2 <- 20
+f <- -0.233
+MAP <- 23
+A <- 1800
+E <- -12
+
+
+# calculer power output Paer, Pan pour T < TMAP
+
+t_low <- seq(1, 300, 1)
+
+B_low <- MAP - BMR
+P_aer_low <- BMR +B_low -  B_low*k1/t_low + B_low*k1* exp(-t_low/k1)/t_low
+
+
+S_low <- A
+P_an_low <- S_low/t_low * (1-exp(-t_low/k2))
+
+# calculer power output Paer, pan T > TMAP
+
+t_high <- seq(301, 4*3600, 1)
+
+B_high <- MAP*(E*log(t_high/TMAP)+100)/100 - BMR 
+P_aer_high <-  BMR +B_high -  B_high*k1/t_high + B_high*k1* exp(-t_high/k1)/t_high
+
+S_high <- A*(1 + f*log(t_high/TMAP))
+P_an_high <- S_high/t_high * (1-exp(-t_high/k2))
+
+
+#joindre les deux vecteurs de puissances
+
+t <- c(t_low, t_high)
+
+P_aer <- c(P_aer_low, P_aer_high)
+P_an <- c(P_an_low, P_an_high)
+
+P_tot <- P_aer+ P_an
+
+plot(t, P_tot, type = "l", col = "red")
+
+
+# on prend un rendement mécanique de 20 % 
+
+power <- 0.2 * P_tot*weight
+
+endurance_moyenne <- data.frame(time = t,
+                                power = power)
+
+#sauver le profil d'endurance moyenne
+
+write_csv(endurance_moyenne, "profils de cyclistes/sprinteur.csv")
+
+#fonction qui permet d'extraire le temps à partir du data frame d'endurance
+
+power_from_time <- function(t, endurance_frame){
+p <- endurance_frame%>%
+  filter(time == t)
+p <- as.numeric(p[,2])
+return(p)
+}
+
+#créer une table lisible pour l'article
+
+
+
+cp <- c()
+for(h in temps){
+  r<- power_from_time(h, endurance_moyenne)
+  cp <- c(cp, r)
+  as.data.frame(cp)
+  
+}
+
+
+table_endurance_moyenne <- data.frame('1s' = c(cp[1]),
+                                      '15s' = c(cp[2]),
+                                      '30s' = c(cp[3]),
+                                      '60s' = c(cp[4]),
+                                      '1min'= c(cp[5]),
+                                      '2min'= c(cp[6]),
+                                      '3min' =c(cp[7]),
+                                      '4min' = c(cp[8]),
+                                      '5min' = c(cp[9]),
+                                      '10min' = c(cp[10]),
+                                      '20min' = c(cp[11]),
+                                      '30min' = c(cp[12]),
+                                      '45min' = c(cp[13]),
+                                      '1h' = c(cp[14]),
+                                      '1h30' = c(cp[15]),
+                                      '2h' = c(cp[16]),
+                                      '4h'= c(cp[17]))
+
+#Caractéristiques athlète endurance moyenne
+
+indice_endurance <- data.frame(indice_endurance = -1.5)
+cap_ana <- data.frame(cap_ana = 2000)
+MAP <- data.frame(MAP = 23*weight*0.2)
+
+#Mettre toute l'info dans le même data frame
+table_endurance_moyenne <- bind_cols(table_endurance_moyenne, indice_endurance, cap_ana, MAP)
+
+
+write_csv(table_endurance_moyenne, "profils de cyclistes/table_sprinteur.csv")
+
+
+```
+
+
+All around
+
+```{r}
+
+temps <- c(1/60, 0.25, 0.5, 1, 2, 3, 4, 5, 10, 20, 30, 45, 60, 90, 120, 180, 240)*60
+
+weight <- 70
+
+#Données  pour un athlète d'endurance moyenne
+TMAP <- 300 # selon billat # ajuster TMAP selon la MAP...
+BMR <- 1.2
+k1 <- 30
+k2 <- 20
+f <- -0.233
+MAP <- 25
+A <- 1600
+E <- -10
+
+
+# calculer power output Paer, Pan pour T < TMAP
+
+t_low <- seq(1, 300, 1)
+
+B_low <- MAP - BMR
+P_aer_low <- BMR +B_low -  B_low*k1/t_low + B_low*k1* exp(-t_low/k1)/t_low
+
+
+S_low <- A
+P_an_low <- S_low/t_low * (1-exp(-t_low/k2))
+
+# calculer power output Paer, pan T > TMAP
+
+t_high <- seq(301, 4*3600, 1)
+
+B_high <- MAP*(E*log(t_high/TMAP)+100)/100 - BMR 
+P_aer_high <-  BMR +B_high -  B_high*k1/t_high + B_high*k1* exp(-t_high/k1)/t_high
+
+S_high <- A*(1 + f*log(t_high/TMAP))
+P_an_high <- S_high/t_high * (1-exp(-t_high/k2))
+
+
+#joindre les deux vecteurs de puissances
+
+t <- c(t_low, t_high)
+
+P_aer <- c(P_aer_low, P_aer_high)
+P_an <- c(P_an_low, P_an_high)
+
+P_tot <- P_aer+ P_an
+
+plot(t, P_tot, type = "l", col = "red")
+
+
+# on prend un rendement mécanique de 20 % 
+
+power <- 0.2 * P_tot*weight
+
+endurance_moyenne <- data.frame(time = t,
+                                power = power)
+
+#sauver le profil d'endurance moyenne
+
+write_csv(endurance_moyenne, "profils de cyclistes/all-around.csv")
+
+#fonction qui permet d'extraire le temps à partir du data frame d'endurance
+
+power_from_time <- function(t, endurance_frame){
+p <- endurance_frame%>%
+  filter(time == t)
+p <- as.numeric(p[,2])
+return(p)
+}
+
+#créer une table lisible pour l'article
+
+
+
+cp <- c()
+for(h in temps){
+  r<- power_from_time(h, endurance_moyenne)
+  cp <- c(cp, r)
+  as.data.frame(cp)
+  
+}
+
+
+table_endurance_moyenne <- data.frame('1s' = c(cp[1]),
+                                      '15s' = c(cp[2]),
+                                      '30s' = c(cp[3]),
+                                      '60s' = c(cp[4]),
+                                      '1min'= c(cp[5]),
+                                      '2min'= c(cp[6]),
+                                      '3min' =c(cp[7]),
+                                      '4min' = c(cp[8]),
+                                      '5min' = c(cp[9]),
+                                      '10min' = c(cp[10]),
+                                      '20min' = c(cp[11]),
+                                      '30min' = c(cp[12]),
+                                      '45min' = c(cp[13]),
+                                      '1h' = c(cp[14]),
+                                      '1h30' = c(cp[15]),
+                                      '2h' = c(cp[16]),
+                                      '4h'= c(cp[17]))
+
+#Caractéristiques athlète endurance moyenne
+
+indice_endurance <- data.frame(indice_endurance = -1)
+cap_ana <- data.frame(cap_ana = 1700)
+MAP <- data.frame(MAP = 25*weight*0.2)
+
+#Mettre toute l'info dans le même data frame
+table_endurance_moyenne <- bind_cols(table_endurance_moyenne, indice_endurance, cap_ana, MAP)
+
+
+write_csv(table_endurance_moyenne, "profils de cyclistes/table_all-around.csv")
+
+
+```
+
+
+pursuit
+
+```{r}
+
+temps <- c(1/60, 0.25, 0.5, 1, 2, 3, 4, 5, 10, 20, 30, 45, 60, 90, 120, 180, 240)*60
+
+weight <- 70
+
+#Données  pour un athlète d'endurance moyenne
+TMAP <- 300 # selon billat # ajuster TMAP selon la MAP...
+BMR <- 1.2
+k1 <- 30
+k2 <- 20
+f <- -0.233
+MAP <- 27
+A <- 1600
+E <- -12
+
+
+# calculer power output Paer, Pan pour T < TMAP
+
+t_low <- seq(1, 300, 1)
+
+B_low <- MAP - BMR
+P_aer_low <- BMR +B_low -  B_low*k1/t_low + B_low*k1* exp(-t_low/k1)/t_low
+
+
+S_low <- A
+P_an_low <- S_low/t_low * (1-exp(-t_low/k2))
+
+# calculer power output Paer, pan T > TMAP
+
+t_high <- seq(301, 4*3600, 1)
+
+B_high <- MAP*(E*log(t_high/TMAP)+100)/100 - BMR 
+P_aer_high <-  BMR +B_high -  B_high*k1/t_high + B_high*k1* exp(-t_high/k1)/t_high
+
+S_high <- A*(1 + f*log(t_high/TMAP))
+P_an_high <- S_high/t_high * (1-exp(-t_high/k2))
+
+
+#joindre les deux vecteurs de puissances
+
+t <- c(t_low, t_high)
+
+P_aer <- c(P_aer_low, P_aer_high)
+P_an <- c(P_an_low, P_an_high)
+
+P_tot <- P_aer+ P_an
+
+plot(t, P_tot, type = "l", col = "red")
+
+
+# on prend un rendement mécanique de 20 % 
+
+power <- 0.2 * P_tot*weight
+
+endurance_moyenne <- data.frame(time = t,
+                                power = power)
+
+#sauver le profil d'endurance moyenne
+
+write_csv(endurance_moyenne, "profils de cyclistes/pursuit.csv")
+
+#fonction qui permet d'extraire le temps à partir du data frame d'endurance
+
+power_from_time <- function(t, endurance_frame){
+p <- endurance_frame%>%
+  filter(time == t)
+p <- as.numeric(p[,2])
+return(p)
+}
+
+#créer une table lisible pour l'article
+
+
+
+cp <- c()
+for(h in temps){
+  r<- power_from_time(h, endurance_moyenne)
+  cp <- c(cp, r)
+  as.data.frame(cp)
+  
+}
+
+
+table_endurance_moyenne <- data.frame('1s' = c(cp[1]),
+                                      '15s' = c(cp[2]),
+                                      '30s' = c(cp[3]),
+                                      '60s' = c(cp[4]),
+                                      '1min'= c(cp[5]),
+                                      '2min'= c(cp[6]),
+                                      '3min' =c(cp[7]),
+                                      '4min' = c(cp[8]),
+                                      '5min' = c(cp[9]),
+                                      '10min' = c(cp[10]),
+                                      '20min' = c(cp[11]),
+                                      '30min' = c(cp[12]),
+                                      '45min' = c(cp[13]),
+                                      '1h' = c(cp[14]),
+                                      '1h30' = c(cp[15]),
+                                      '2h' = c(cp[16]),
+                                      '4h'= c(cp[17]))
+
+#Caractéristiques athlète endurance moyenne
+
+indice_endurance <- data.frame(indice_endurance = -1.5)
+cap_ana <- data.frame(cap_ana = 1700)
+MAP <- data.frame(MAP = 27*weight*0.2)
+
+#Mettre toute l'info dans le même data frame
+table_endurance_moyenne <- bind_cols(table_endurance_moyenne, indice_endurance, cap_ana, MAP)
+
+
+write_csv(table_endurance_moyenne, "profils de cyclistes/table_pursuit.csv")
+
+
+```
+
+time trial
+
+```{r}
+
+temps <- c(1/60, 0.25, 0.5, 1, 2, 3, 4, 5, 10, 20, 30, 45, 60, 90, 120, 180, 240)*60
+
+weight <- 70
+
+#Données  pour un athlète d'endurance moyenne
+TMAP <- 300 # selon billat # ajuster TMAP selon la MAP...
+BMR <- 1.2
+k1 <- 30
+k2 <- 20
+f <- -0.233
+MAP <- 25
+A <- 1400
+E <- -8
+
+
+# calculer power output Paer, Pan pour T < TMAP
+
+t_low <- seq(1, 300, 1)
+
+B_low <- MAP - BMR
+P_aer_low <- BMR +B_low -  B_low*k1/t_low + B_low*k1* exp(-t_low/k1)/t_low
+
+
+S_low <- A
+P_an_low <- S_low/t_low * (1-exp(-t_low/k2))
+
+# calculer power output Paer, pan T > TMAP
+
+t_high <- seq(301, 4*3600, 1)
+
+B_high <- MAP*(E*log(t_high/TMAP)+100)/100 - BMR 
+P_aer_high <-  BMR +B_high -  B_high*k1/t_high + B_high*k1* exp(-t_high/k1)/t_high
+
+S_high <- A*(1 + f*log(t_high/TMAP))
+P_an_high <- S_high/t_high * (1-exp(-t_high/k2))
+
+
+#joindre les deux vecteurs de puissances
+
+t <- c(t_low, t_high)
+
+P_aer <- c(P_aer_low, P_aer_high)
+P_an <- c(P_an_low, P_an_high)
+
+P_tot <- P_aer+ P_an
+
+plot(t, P_tot, type = "l", col = "red")
+
+
+# on prend un rendement mécanique de 20 % 
+
+power <- 0.2 * P_tot*weight
+
+endurance_moyenne <- data.frame(time = t,
+                                power = power)
+
+#sauver le profil d'endurance moyenne
+
+write_csv(endurance_moyenne, "profils de cyclistes/time-trial.csv")
+
+#fonction qui permet d'extraire le temps à partir du data frame d'endurance
+
+power_from_time <- function(t, endurance_frame){
+p <- endurance_frame%>%
+  filter(time == t)
+p <- as.numeric(p[,2])
+return(p)
+}
+
+#créer une table lisible pour l'article
+
+
+
+cp <- c()
+for(h in temps){
+  r<- power_from_time(h, endurance_moyenne)
+  cp <- c(cp, r)
+  as.data.frame(cp)
+  
+}
+
+
+table_endurance_moyenne <- data.frame('1s' = c(cp[1]),
+                                      '15s' = c(cp[2]),
+                                      '30s' = c(cp[3]),
+                                      '60s' = c(cp[4]),
+                                      '1min'= c(cp[5]),
+                                      '2min'= c(cp[6]),
+                                      '3min' =c(cp[7]),
+                                      '4min' = c(cp[8]),
+                                      '5min' = c(cp[9]),
+                                      '10min' = c(cp[10]),
+                                      '20min' = c(cp[11]),
+                                      '30min' = c(cp[12]),
+                                      '45min' = c(cp[13]),
+                                      '1h' = c(cp[14]),
+                                      '1h30' = c(cp[15]),
+                                      '2h' = c(cp[16]),
+                                      '4h'= c(cp[17]))
+
+#Caractéristiques athlète endurance moyenne
+
+indice_endurance <- data.frame(indice_endurance = -0.25)
+cap_ana <- data.frame(cap_ana = 1600)
+MAP <- data.frame(MAP = 25*weight*0.2)
+
+#Mettre toute l'info dans le même data frame
+table_endurance_moyenne <- bind_cols(table_endurance_moyenne, indice_endurance, cap_ana, MAP)
+
+
+write_csv(table_endurance_moyenne, "profils de cyclistes/table_time_trial.csv")
+
+
+```
+

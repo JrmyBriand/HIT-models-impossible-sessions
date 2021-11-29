@@ -1,0 +1,427 @@
+---
+title: "calcul_erreur_puissance_Purdy_coggan"
+author: "Jeremy Briand"
+date: "18/02/2021"
+output: html_document
+---
+
+Code pour comparer l'erreur de puissance entre Purdy et Coggan qui permet de générer représentations de type bland-altman
+
+Loader les packages
+
+```{r}
+library(easypackages)
+packages("dplyr", "tidyr", "readr", "readxl", "plot3D", "plot3Drgl", "hms", "plotly", "htmlwidgets")
+library(zoo)
+```
+
+Importer les fonctions pertinentes pour la suite du code
+
+équation de Di Prampero, tranfère vitesse en puissance
+
+
+Importer les profils d'endurance
+
+```{r}
+sprinter <- read_csv("profils de cyclistes/sprinteur.csv")
+
+time_trialist <- read_csv("profils de cyclistes/time-trial.csv")
+
+pursuiter <- read_csv("profils de cyclistes/pursuit.csv")  
+
+all_around <- read_csv("profils de cyclistes/all-around.csv")
+
+```
+
+Fonction qui permet de trouver la puissance correspondant à une durée donnée selon un profil d'endurance
+
+```{r}
+power_from_time <- function(Time, end_profile){
+
+  line <- end_profile %>%
+    filter(time == Time)
+  power <- as.numeric(line[, 2])
+  return(power)
+}
+```
+
+Fonction pour calculer la puissance normalisée
+
+```{r}
+normalized_power <- function(Nrep, interval_power, rest_power, interval_duration, rest){
+        
+  power <- c(rep(c(rep(interval_power, times = interval_duration), rep(rest_power, times = rest)), times = Nrep-1), rep(interval_power, times = interval_duration))
+  seconds <- 1:length(power)
+  
+  
+  training <- data.frame(time = seconds, power = power)
+ suppressWarnings( training <- training %>%
+    mutate(roll_avg = rollmean(power, k = 30, fill = "right")))
+  
+  training <- na.omit(training)
+  
+  training <- training %>%
+    mutate (roll_avg_4 = roll_avg^4)
+  
+ 
+  
+  PN <- (mean(training$roll_avg_4))^(1/4)
+  
+  
+  
+  return(PN)
+}
+```
+
+
+Calcul pour sprinter
+```{r}
+
+    PAM <- power_from_time(300, sprinter)
+     
+     #importer entraînements 
+     
+     trainings <- read.csv("seances_purdy/seances.csv")
+     
+     # ajouter le pointage, la PAM et la vitesse maximale pouvant être maintenue sur la durée de l'entraînement au dataframe de l'entraînement
+     
+     trainings <- trainings%>%
+       mutate(profil = "sprinter",
+              PAM = PAM,
+              rest_power = PAM/2,
+              duration = Nrep*interval_duration+ (Nrep-1)*rest
+              )
+    #filtrer les durées totales des entraînements, plus grand que 30s, plus petit que 90 min
+     
+     trainings <- trainings %>%
+        filter(duration >= 30,
+               duration <= 60*90)
+    
+   
+   #calculer puissance critique sur la durée
+   PC <- c()
+   for(i in 1:length(trainings$Nrep)){
+       p <- power_from_time(trainings$duration[i], sprinter)
+       PC <- c(PC, p)
+     }
+     PC <- as.data.frame(PC)
+     
+     trainings <- bind_cols(trainings, PC)
+     
+     #Pour chaque séance créer un array de puissances. On voudra calculer le W'balance de chaque possibilité et choisir celui pour lequel le W' balance est le plus proche de 0 
+
+intPowers <- seq(0.8, 5, 0.2)*PAM
+    
+
+
+
+#loop sur chaque puissance de l'array pour chaque entraînement
+
+  PN_frame <- data.frame()
+for (k in 1:length(trainings$Nrep)){
+ DR <- c()
+  for(h in intPowers){
+  s <- normalized_power(trainings$Nrep[k], h, trainings$rest_power[k], trainings$interval_duration[k], trainings$rest[k])
+  d <- (s)/(trainings$PC[k])
+  DR <- c(DR, d)
+ 
+  }
+  frame <- data.frame(power_cogganTSS = intPowers, 
+                        DR = DR
+                       )
+ 
+  # W_frame <- W_frame %>%
+  #   mutate(percent_w_bal = (Wbal_skiba/Wprime)*100)%>%
+  #   filter(abs(Wbal_skiba) == min(abs(Wbal_skiba)) )
+ 
+  
+  zero_finder <- lm(data = frame, formula = power_cogganTSS ~ DR)
+p_cogganTSS <- data.frame(
+  DR = 1,
+  power_cogganTSS = predict(zero_finder, newdata = data.frame(DR = 1)))
+
+ 
+
+
+  PN_frame <- bind_rows(PN_frame, p_cogganTSS)
+  print(k)
+}
+     
+     #Joindre les colonnes de DR et de puissance coggan aux trainings
+      
+      trainings_2 <- bind_cols(trainings, PN_frame)
+#Ratio check
+      
+       Ratio_trainings_2 <- c()
+      for(i in 1:length(trainings_2$Nrep)){
+        i<- 1
+        np <- normalized_power( trainings_2$Nrep[i],trainings_2$power_cogganTSS[i], trainings_2$rest_power[i], trainings_2$interval_duration[i], trainings_2$rest[i])
+        R <- np/PC$PC[i]
+        Ratio_trainings_2 <- c(Ratio_trainings_2, R)
+      }
+      
+     Ratio_check_sprint <- data.frame(Ratio = Ratio_trainings_2)     
+      
+    
+  
+    trainings_end_moyenne <- trainings_2
+     
+     write.csv(trainings_end_moyenne, "seances_purdy/trainings_sprinter_cogganTSS.csv")
+```
+     
+
+
+
+
+Calcul pour time trialist
+```{r}
+
+    PAM <- power_from_time(300, time_trialist)
+     
+     #importer entraînements 
+     
+     trainings <- read.csv("seances_purdy/seances.csv")
+     
+     # ajouter le pointage, la PAM et la vitesse maximale pouvant être maintenue sur la durée de l'entraînement au dataframe de l'entraînement
+     
+     trainings <- trainings%>%
+       mutate(profil = "time-trialist",
+              PAM = PAM,
+              rest_power = PAM/2,
+              duration = Nrep*interval_duration+ (Nrep-1)*rest
+              )
+    #filtrer les durées totales des entraînements, plus grand que 30s, plus petit que 90 min
+     
+     trainings <- trainings %>%
+        filter(duration >= 30,
+               duration <= 60*90)
+    
+   
+   #calculer puissance critique sur la durée
+   PC <- c()
+   for(i in 1:length(trainings$Nrep)){
+       p <- power_from_time(trainings$duration[i], time_trialist)
+       PC <- c(PC, p)
+     }
+     PC <- as.data.frame(PC)
+     
+     trainings <- bind_cols(trainings, PC)
+     
+     #Pour chaque séance créer un array de puissances. On voudra calculer le W'balance de chaque possibilité et choisir celui pour lequel le W' balance est le plus proche de 0 
+
+intPowers <- seq(0.8, 5, 0.2)*PAM
+    
+
+
+
+#loop sur chaque puissance de l'array pour chaque entraînement
+
+  PN_frame <- data.frame()
+for (k in 1:length(trainings$Nrep)){
+ DR <- c()
+  for(h in intPowers){
+  s <- normalized_power(trainings$Nrep[k], h, trainings$rest_power[k], trainings$interval_duration[k], trainings$rest[k])
+  d <- (s)/(trainings$PC[k])
+  DR <- c(DR, d)
+ 
+  }
+  frame <- data.frame(power_cogganTSS = intPowers, 
+                        DR = DR
+                       )
+ 
+  # W_frame <- W_frame %>%
+  #   mutate(percent_w_bal = (Wbal_skiba/Wprime)*100)%>%
+  #   filter(abs(Wbal_skiba) == min(abs(Wbal_skiba)) )
+ 
+  
+  zero_finder <- lm(data = frame, formula = power_cogganTSS ~ DR)
+p_cogganTSS <- data.frame(
+  DR = 1,
+  power_cogganTSS = predict(zero_finder, newdata = data.frame(DR = 1)))
+
+ 
+
+
+  PN_frame <- bind_rows(PN_frame, p_cogganTSS)
+  print(k)
+}
+     
+     #Joindre les colonnes de DR et de puissance coggan aux trainings
+      
+      trainings_2 <- bind_cols(trainings, PN_frame)
+      
+     #Ratio check
+      
+       Ratio_trainings_2 <- c()
+      for(i in 1:length(trainings_2$Nrep)){
+        np <- normalized_power( trainings_2$Nrep[i],trainings_2$power_cogganTSS[i], trainings_2$rest_power[i], trainings_2$interval_duration[i], trainings_2$rest[i])
+        R <- np/PC$PC[i]
+        Ratio_trainings_2 <- c(Ratio_trainings_2, R)
+      }
+      
+     Ratio_check_timetrial <- data.frame(Ratio = Ratio_trainings_2)     
+       
+    
+  
+    trainings_end_moyenne <- trainings_2
+     
+     write.csv(trainings_end_moyenne, "seances_purdy/trainings_timetrialist_cogganTSS.csv")
+```
+
+Calcul pour all around
+```{r}
+
+    PAM <- power_from_time(300, all_around)
+     
+     #importer entraînements 
+     
+     trainings <- read.csv("seances_purdy/seances.csv")
+     
+     # ajouter le pointage, la PAM et la vitesse maximale pouvant être maintenue sur la durée de l'entraînement au dataframe de l'entraînement
+     
+     trainings <- trainings%>%
+       mutate(profil = "all around",
+              PAM = PAM,
+              rest_power = PAM/2,
+              duration = Nrep*interval_duration+ (Nrep-1)*rest
+              )
+    #filtrer les durées totales des entraînements, plus grand que 30s, plus petit que 90 min
+     
+     trainings <- trainings %>%
+        filter(duration >= 30,
+               duration <= 60*90)
+    
+   
+   #calculer puissance critique sur la durée
+   PC <- c()
+   for(i in 1:length(trainings$Nrep)){
+       p <- power_from_time(trainings$duration[i], all_around)
+       PC <- c(PC, p)
+     }
+     PC <- as.data.frame(PC)
+     
+     trainings <- bind_cols(trainings, PC)
+     
+     #Pour chaque séance créer un array de puissances. On voudra calculer le W'balance de chaque possibilité et choisir celui pour lequel le W' balance est le plus proche de 0 
+
+intPowers <- seq(0.8, 5, 0.2)*PAM
+    
+
+
+
+#loop sur chaque puissance de l'array pour chaque entraînement
+
+  PN_frame <- data.frame()
+for (k in 1:length(trainings$Nrep)){
+ DR <- c()
+  for(h in intPowers){
+  s <- normalized_power(trainings$Nrep[k], h, trainings$rest_power[k], trainings$interval_duration[k], trainings$rest[k])
+  d <- (s)/(trainings$PC[k])
+  DR <- c(DR, d)
+ 
+  }
+  frame <- data.frame(power_cogganTSS = intPowers, 
+                        DR = DR
+                       )
+ 
+  # W_frame <- W_frame %>%
+  #   mutate(percent_w_bal = (Wbal_skiba/Wprime)*100)%>%
+  #   filter(abs(Wbal_skiba) == min(abs(Wbal_skiba)) )
+ 
+  
+  zero_finder <- lm(data = frame, formula = power_cogganTSS ~ DR)
+p_cogganTSS <- data.frame(
+  DR = 1,
+  power_cogganTSS = predict(zero_finder, newdata = data.frame(DR = 1)))
+
+ 
+
+
+  PN_frame <- bind_rows(PN_frame, p_cogganTSS)
+  print(k)
+}
+     
+     #Joindre les colonnes de DR et de puissance coggan aux trainings
+      
+      trainings_2 <- bind_cols(trainings, PN_frame)
+      
+      #Ratio check
+      
+       Ratio_trainings_2 <- c()
+      for(i in 1:length(trainings_2$Nrep)){
+        np <- normalized_power( trainings_2$Nrep[i],trainings_2$power_cogganTSS[i], trainings_2$rest_power[i], trainings_2$interval_duration[i], trainings_2$rest[i])
+        R <- np/PC$PC[i]
+        Ratio_trainings_2 <- c(Ratio_trainings_2, R)
+      }
+      
+     Ratio_check_allaround <- data.frame(Ratio = Ratio_trainings_2)     
+      
+    
+  
+    trainings_end_moyenne <- trainings_2
+     
+     write.csv(trainings_end_moyenne, "seances_purdy/trainings_allaround_cogganTSS.csv")
+```
+
+Ratio checks
+
+```{r}
+
+trainings_2 <- read_csv("seances_purdy/trainings_sprinter_cogganTSS.csv")
+
+Ratio_trainings_2 <- c()
+      for(i in 1:length(trainings_2$Nrep)){
+        np <- normalized_power( trainings_2$Nrep[i],trainings_2$power_cogganTSS[i], trainings_2$rest_power[i], trainings_2$interval_duration[i], trainings_2$rest[i])
+        R <- np/PC$PC[i]
+        Ratio_trainings_2 <- c(Ratio_trainings_2, R)
+      }
+      
+     Ratio_check_sprint <- data.frame(Ratio = Ratio_trainings_2) 
+
+
+trainings_2 <- read_csv("seances_purdy/trainings_pursuiter_cogganTSS.csv")
+
+Ratio_trainings_2 <- c()
+      for(i in 1:length(trainings_2$Nrep)){
+
+        np <- normalized_power( trainings_2$Nrep[i],trainings_2$power_cogganTSS[i], trainings_2$rest_power[i], trainings_2$interval_duration[i], trainings_2$rest[i])
+        R <- np/PC$PC[i]
+        Ratio_trainings_2 <- c(Ratio_trainings_2, R)
+      }
+      
+     Ratio_check_pursuit <- data.frame(Ratio = Ratio_trainings_2) 
+     
+     
+trainings_2 <- read_csv("seances_purdy/trainings_allaround_cogganTSS.csv")
+
+Ratio_trainings_2 <- c()
+      for(i in 1:length(trainings_2$Nrep)){
+
+        np <- normalized_power( trainings_2$Nrep[i],trainings_2$power_cogganTSS[i], trainings_2$rest_power[i], trainings_2$interval_duration[i], trainings_2$rest[i])
+        R <- np/PC$PC[i]
+        Ratio_trainings_2 <- c(Ratio_trainings_2, R)
+      }
+      
+     Ratio_check_allaround <- data.frame(Ratio = Ratio_trainings_2) 
+     
+     
+trainings_2 <- read_csv("seances_purdy/trainings_timetrialist_cogganTSS.csv")
+
+Ratio_trainings_2 <- c()
+      for(i in 1:length(trainings_2$Nrep)){
+
+        np <- normalized_power( trainings_2$Nrep[i],trainings_2$power_cogganTSS[i], trainings_2$rest_power[i], trainings_2$interval_duration[i], trainings_2$rest[i])
+        R <- np/PC$PC[i]
+        Ratio_trainings_2 <- c(Ratio_trainings_2, R)
+      }
+      
+     Ratio_check_timetrial <- data.frame(Ratio = Ratio_trainings_2) 
+     
+     
+
+     
+     
+     
+     
+```
+

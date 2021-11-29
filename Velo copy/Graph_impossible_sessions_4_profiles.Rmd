@@ -1,0 +1,538 @@
+---
+title: "percent_v_max_skiba"
+author: "Jeremy Briand"
+date: "04/05/2021"
+output: html_document
+---
+Code pour générer graphiques du pourcentage de la vitesse maximale d'une séance d'entraînement pour les séances de Skiba
+
+Loader les packages
+
+```{r}
+library(easypackages)
+packages("dplyr", "tidyr", "readr", "readxl", "plot3D", "plot3Drgl", "hms", "plotly", "htmlwidgets")
+```
+
+Importer le fichier comportant les séances d'entraînement
+
+```{r}
+sprinter_coggan <- read.csv("seances_purdy/trainings_sprinter_cogganTSS.csv")
+all_around_coggan <- read.csv("seances_purdy/trainings_allaround_cogganTSS.csv")
+time_trialist_coggan <- read.csv("seances_purdy/trainings_timetrialist_cogganTSS.csv")
+pursuiter_coggan <- read.csv("seances_purdy/trainings_pursuiter_cogganTSS.csv")
+
+sprinter_skiba <- read.csv("seances_purdy/trainings_sprinter_skiba.csv")
+all_around_skiba <- read.csv("seances_purdy/trainings_allaround_skiba.csv")
+time_trialist_skiba <- read.csv("seances_purdy/trainings_timetrialist_skiba.csv")
+pursuiter_skiba <- read.csv("seances_purdy/trainings_pursuiter_skiba.csv")
+
+```
+
+
+Importer les profils d'endurance
+
+```{r}
+sprinter <- read_csv("profils de cyclistes/sprinteur.csv")
+
+all_around <- read_csv("profils de cyclistes/all-around.csv")
+
+time_trialist <- read_csv("profils de cyclistes/time-trial.csv")  
+
+pursuiter <- read_csv("profils de cyclistes/pursuit.csv")
+
+```
+
+Fonction qui permet de trouver la puissance correspondant à une durée donnée selon un profil d'endurance
+
+```{r}
+
+power_from_time <- function(Time, end_profile){
+
+  line <- end_profile %>%
+    filter(time== Time)
+  power <- as.numeric(line[, 2])
+  return(power)
+}
+```
+
+
+
+loop pour calculer la vitesse de chaque séance et le pourcentage de la puissance max sur la durée de l'intervalle
+
+```{r}
+#skiba
+#sprinter
+
+#vecteur vide
+percent_power_max <- c()
+#looper sur le frame
+
+sprinter_skiba <- sprinter_skiba %>%
+  mutate(duration = Nrep*interval_duration + (Nrep-1)* rest)
+
+
+for(i in 1:length(sprinter_skiba$Nrep)){
+  p <- sprinter_skiba$power_skiba[i]/power_from_time(sprinter_skiba$interval_duration[i], sprinter) *100
+  percent_power_max<- c(percent_power_max, p)
+  #print(i)
+}
+
+percent_power_max <- data_frame(percent_power_max = percent_power_max)
+
+sprinter_skiba <- bind_cols(sprinter_skiba, percent_power_max)
+
+
+#All arounder 
+
+
+#vecteur vide
+percent_power_max <- c()
+#looper sur le frame
+
+all_around_skiba <- all_around_skiba %>%
+  mutate(duration = Nrep*interval_duration + (Nrep-1)* rest)
+
+
+for(i in 1:length(all_around_skiba$Nrep)){
+  p <- all_around_skiba$power_skiba[i]/power_from_time(all_around_skiba$interval_duration[i], all_around) *100
+  percent_power_max<- c(percent_power_max, p)
+  #print(i)
+}
+
+percent_power_max <- data_frame(percent_power_max = percent_power_max)
+
+all_around_skiba <- bind_cols(all_around_skiba, percent_power_max)
+
+
+#pursuiter
+
+#vecteur vide
+percent_power_max <- c()
+#looper sur le frame
+
+pursuiter_skiba <- pursuiter_skiba %>%
+  mutate(duration = Nrep*interval_duration + (Nrep-1)* rest)
+
+
+for(i in 1:length(pursuiter_skiba$Nrep)){
+  p <- pursuiter_skiba$power_skiba[i]/power_from_time(pursuiter_skiba$interval_duration[i], pursuiter) *100
+  percent_power_max<- c(percent_power_max, p)
+  #print(i)
+}
+
+percent_power_max <- data_frame(percent_power_max = percent_power_max)
+
+pursuiter_skiba <- bind_cols(pursuiter_skiba, percent_power_max)
+
+#time trialist
+
+#vecteur vide
+percent_power_max <- c()
+#looper sur le frame
+
+time_trialist_skiba <- time_trialist_skiba %>%
+  mutate(duration = Nrep*interval_duration + (Nrep-1)* rest)
+
+
+for(i in 1:length(time_trialist_skiba$Nrep)){
+  p <- time_trialist_skiba$power_skiba[i]/power_from_time(time_trialist_skiba$interval_duration[i], time_trialist) *100
+  percent_power_max<- c(percent_power_max, p)
+  #print(i)
+}
+
+percent_power_max <- data_frame(percent_power_max = percent_power_max)
+
+time_trialist_skiba <- bind_cols(time_trialist_skiba, percent_power_max)
+
+
+
+```
+
+
+loop pour calculer la vitesse de chaque séance et le pourcentage de la puissance max sur la durée de l'intervalle
+
+```{r}
+#coggan
+#sprinter
+
+#vecteur vide
+percent_power_max <- c()
+#looper sur le frame
+
+sprinter_coggan <- sprinter_coggan %>%
+  mutate(duration = Nrep*interval_duration + (Nrep-1)* rest)
+
+
+for(i in 1:length(sprinter_coggan$Nrep)){
+  p <- sprinter_coggan$power_cogganTSS[i]/power_from_time(sprinter_coggan$interval_duration[i], sprinter) *100
+  percent_power_max<- c(percent_power_max, p)
+  #print(i)
+}
+
+percent_power_max <- data_frame(percent_power_max = percent_power_max)
+
+sprinter_coggan <- bind_cols(sprinter_coggan, percent_power_max)
+
+
+#All arounder 
+
+
+#vecteur vide
+percent_power_max <- c()
+#looper sur le frame
+
+all_around_coggan <- all_around_coggan %>%
+  mutate(duration = Nrep*interval_duration + (Nrep-1)* rest)
+
+
+for(i in 1:length(all_around_coggan$Nrep)){
+  p <- all_around_coggan$power_cogganTSS[i]/power_from_time(all_around_coggan$interval_duration[i], all_around) *100
+  percent_power_max<- c(percent_power_max, p)
+  #print(i)
+}
+
+percent_power_max <- data_frame(percent_power_max = percent_power_max)
+
+all_around_coggan <- bind_cols(all_around_coggan, percent_power_max)
+
+
+#pursuiter
+
+#vecteur vide
+percent_power_max <- c()
+#looper sur le frame
+
+pursuiter_coggan <- pursuiter_coggan %>%
+  mutate(duration = Nrep*interval_duration + (Nrep-1)* rest)
+
+
+for(i in 1:length(pursuiter_coggan$Nrep)){
+  p <- pursuiter_coggan$power_cogganTSS[i]/power_from_time(pursuiter_coggan$interval_duration[i], pursuiter) *100
+  percent_power_max<- c(percent_power_max, p)
+  #print(i)
+}
+
+percent_power_max <- data_frame(percent_power_max = percent_power_max)
+
+pursuiter_coggan <- bind_cols(pursuiter_coggan, percent_power_max)
+
+#time trialist
+
+#vecteur vide
+percent_power_max <- c()
+#looper sur le frame
+
+time_trialist_coggan <- time_trialist_coggan %>%
+  mutate(duration = Nrep*interval_duration + (Nrep-1)* rest)
+
+
+for(i in 1:length(time_trialist_coggan$Nrep)){
+  p <- time_trialist_coggan$power_cogganTSS[i]/power_from_time(time_trialist_coggan$interval_duration[i], time_trialist) *100
+  percent_power_max<- c(percent_power_max, p)
+  #print(i)
+}
+
+percent_power_max <- data_frame(percent_power_max = percent_power_max)
+
+time_trialist_coggan <- bind_cols(time_trialist_coggan, percent_power_max)
+
+
+
+```
+
+Créer un data frame qui regoupe chaque profil
+```{r}
+AA_coggan <- data.frame(
+  interval_duration = all_around_coggan$interval_duration,
+  percent_power_max = all_around_coggan$percent_power_max,
+  profile = "All Rounder, Coggan-Modified",
+  percent_impossible = 1.21)
+
+AA_coggan$smaller <- as.factor(AA_coggan$percent_power_max < 100)
+
+AA_skiba <- data.frame(
+  interval_duration = all_around_skiba$interval_duration,
+  percent_power_max = all_around_skiba$percent_power_max,
+  profile = "All Rounder, Skiba",
+  percent_impossible = 11.99
+)
+AA_skiba$smaller <- as.factor(AA_skiba$percent_power_max < 100)
+
+S_coggan <- data.frame(
+  interval_duration = sprinter_coggan$interval_duration,
+  percent_power_max = sprinter_coggan$percent_power_max,
+  profile = "Sprinter, Coggan-Modified",
+  percent_impossible = 0.63
+)
+S_coggan$smaller <- as.factor(S_coggan$percent_power_max < 100)
+
+S_skiba <-
+  data.frame(
+  interval_duration = sprinter_skiba$interval_duration,
+  percent_power_max = sprinter_skiba$percent_power_max,
+  profile = "Sprinter, Skiba",
+  percent_impossible = 4.42
+)
+S_skiba$smaller <- as.factor(S_skiba$percent_power_max < 100)
+
+TT_coggan <- 
+  data.frame(
+    interval_duration = time_trialist_coggan$interval_duration,
+  percent_power_max = time_trialist_coggan$percent_power_max,
+  profile = "Time Trialist, Coggan-Modified",
+  percent_impossible = 3.26
+  )
+TT_coggan$smaller <- as.factor(TT_coggan$percent_power_max < 100)  
+
+TT_skiba <- 
+  data.frame(
+    interval_duration = time_trialist_skiba$interval_duration,
+  percent_power_max = time_trialist_skiba$percent_power_max,
+  profile = "Time Trialist, Skiba",
+  percent_impossible = 22.89
+  )
+TT_skiba$smaller <- as.factor(TT_skiba$percent_power_max < 100)
+  
+
+profiles <- bind_rows(AA_coggan,AA_skiba, S_coggan, S_skiba, TT_coggan, TT_skiba)
+
+
+```
+
+Graph 3 profiles
+
+```{r}
+
+#tt skiba
+
+tt_skiba <- ggplot(TT_skiba, aes(interval_duration, percent_power_max, color = as.factor(smaller)))+
+geom_jitter( alpha = 1, size = 0.5)+
+  labs(y= "% maximal power output", x= "") + 
+  geom_hline(yintercept=100, linetype="solid", color = "red", size = 0.5)+
+   theme_classic()+guides(fill = FALSE)+
+   scale_color_manual(values= c("black", "grey"))+
+   scale_x_continuous( limits = range(sprinter_skiba$interval_duration,pursuiter_skiba$interval_duration, all_around_skiba$interval_duration, time_trialist_skiba$interval_duration), breaks = seq(0, 360, 60))+
+   scale_y_continuous( limits = range(sprinter_skiba$percent_power_max,pursuiter_skiba$percent_power_max, all_around_skiba$percent_power_max, time_trialist_skiba$percent_power_max),breaks = seq(60, 660, 20))+guides(colour = FALSE)+ggtitle("Time-trialist, Skiba")
+
+tt_skiba <- tt_skiba + annotate("text",  x = 180, y = 160, label = paste("Percentage of\n impossible sessions:\n ", TT_skiba$percent_impossible[1], "%"))
+
+#tt coggan
+
+tt_coggan <- ggplot(TT_coggan, aes(interval_duration, percent_power_max, color = as.factor(smaller)))+
+geom_jitter( alpha = 1, size = 0.5)+
+  labs(x = "", y = "")+
+  geom_hline(yintercept=100, linetype="solid", color = "red", size = 0.5)+
+   theme_classic()+guides(fill = FALSE)+
+   scale_color_manual(values= c("black", "grey"))+
+   scale_x_continuous( limits = range(sprinter_skiba$interval_duration,pursuiter_skiba$interval_duration, all_around_skiba$interval_duration, time_trialist_skiba$interval_duration), breaks = seq(0, 360, 60))+
+   scale_y_continuous( limits = range(sprinter_skiba$percent_power_max,pursuiter_skiba$percent_power_max, all_around_skiba$percent_power_max, time_trialist_skiba$percent_power_max),breaks = seq(60, 660, 20))+guides(colour = FALSE)+ggtitle("Time-trialist, Coggan-Modified")
+
+tt_coggan <- tt_coggan + annotate("text",  x = 180, y = 160, label = paste("Percentage of\n impossible sessions:\n ", TT_coggan$percent_impossible[1], "%"))
+
+# AA_skiba
+
+aa_skiba <- ggplot(AA_skiba, aes(interval_duration, percent_power_max, color = as.factor(smaller)))+
+geom_jitter( alpha = 1, size = 0.5)+
+  labs(x = "", y= "% maximal power output") + 
+  geom_hline(yintercept=100, linetype="solid", color = "red", size = 0.5)+
+   theme_classic()+guides(fill = FALSE)+
+   scale_color_manual(values= c("black", "grey"))+
+   scale_x_continuous( limits = range(sprinter_skiba$interval_duration,pursuiter_skiba$interval_duration, all_around_skiba$interval_duration, time_trialist_skiba$interval_duration), breaks = seq(0, 360, 60))+
+   scale_y_continuous( limits = range(sprinter_skiba$percent_power_max,pursuiter_skiba$percent_power_max, all_around_skiba$percent_power_max, time_trialist_skiba$percent_power_max),breaks = seq(60, 660, 20))+guides(colour = FALSE)+ggtitle("All-rounder, Skiba")
+
+aa_skiba <- aa_skiba + annotate("text",  x = 180, y = 160, label = paste("Percentage of\n impossible sessions:\n ", AA_skiba$percent_impossible[1], "%"))
+
+#AA_coggan
+
+aa_coggan <- ggplot(AA_coggan, aes(interval_duration, percent_power_max, color = as.factor(smaller)))+
+  labs(x = "", y = "")+
+geom_jitter( alpha = 1, size = 0.5)+
+  geom_hline(yintercept=100, linetype="solid", color = "red", size = 0.5)+
+   theme_classic()+guides(fill = FALSE)+
+   scale_color_manual(values= c("black", "grey"))+
+   scale_x_continuous( limits = range(sprinter_skiba$interval_duration,pursuiter_skiba$interval_duration, all_around_skiba$interval_duration, time_trialist_skiba$interval_duration), breaks = seq(0, 360, 60))+
+   scale_y_continuous( limits = range(sprinter_skiba$percent_power_max,pursuiter_skiba$percent_power_max, all_around_skiba$percent_power_max, time_trialist_skiba$percent_power_max),breaks = seq(60, 660, 20))+guides(colour = FALSE)+ggtitle("All-rounder, Coggan-modified")
+
+aa_coggan <- aa_coggan + annotate("text",  x = 180, y = 160, label = paste("Percentage of\n impossible sessions:\n ", AA_coggan$percent_impossible[1], "%"))
+
+
+#Sprinter skiba
+
+s_skiba <- ggplot(S_skiba, aes(interval_duration, percent_power_max, color = as.factor(smaller)))+
+geom_jitter( alpha = 1, size = 0.5)+
+  labs(y= "% maximal power output", x = "Interval duration (s)") + 
+  geom_hline(yintercept=100, linetype="solid", color = "red", size = 0.5)+
+   theme_classic()+guides(fill = FALSE)+
+   scale_color_manual(values= c("black", "grey"))+
+   scale_x_continuous( limits = range(sprinter_skiba$interval_duration,pursuiter_skiba$interval_duration, all_around_skiba$interval_duration, time_trialist_skiba$interval_duration), breaks = seq(0, 360, 60))+
+   scale_y_continuous( limits = range(sprinter_skiba$percent_power_max,pursuiter_skiba$percent_power_max, all_around_skiba$percent_power_max, time_trialist_skiba$percent_power_max),breaks = seq(60, 660, 20))+guides(colour = FALSE)+ggtitle("Sprinter, Skiba")
+
+s_skiba <- s_skiba + annotate("text",  x = 180, y = 160, label = paste("Percentage of\n impossible sessions:\n ", S_skiba$percent_impossible[1], "%"))
+
+#Sprinter Coggan
+
+
+s_coggan <- ggplot(S_coggan, aes(interval_duration, percent_power_max, color = as.factor(smaller)))+
+geom_jitter( alpha = 1, size = 0.5)+
+  labs( x = "Interval duration (s)", y = "") + 
+  geom_hline(yintercept=100, linetype="solid", color = "red", size = 0.5)+
+   theme_classic()+guides(fill = FALSE)+
+   scale_color_manual(values= c("black", "grey"))+
+   scale_x_continuous( limits = range(sprinter_skiba$interval_duration,pursuiter_skiba$interval_duration, all_around_skiba$interval_duration, time_trialist_skiba$interval_duration), breaks = seq(0, 360, 60))+
+   scale_y_continuous( limits = range(sprinter_skiba$percent_power_max,pursuiter_skiba$percent_power_max, all_around_skiba$percent_power_max, time_trialist_skiba$percent_power_max),breaks = seq(60, 660, 20))+guides(colour = FALSE)+ggtitle("Sprinter, Coggan-Modified")
+
+s_coggan <- s_coggan + annotate("text",  x = 180, y = 160, label = paste("Percentage of\n impossible sessions:\n ", S_coggan$percent_impossible[1], "%"))
+
+#Joindre les graphs
+
+library(gridExtra)
+library(ggplot2)
+library(cowplot)
+
+
+ prow <- plot_grid(tt_skiba,
+                   tt_coggan,
+                   aa_skiba,
+                   aa_coggan,
+                   s_skiba,
+                   s_coggan,
+          align = "vh", 
+          nrow = 3,
+          ncol = 2, 
+          rel_heights = c(1/2, 1/2))
+ 
+ prow <- prow + coord_fixed(1)
+
+
+# fait le graph approprié pour l'article
+
+```
+
+```{r}
+g1 <- ggplot(profiles, aes(interval_duration, percent_power_max, color = as.factor(smaller))) +geom_label(
+    label= paste("Percentage of impossible sessions: ", profiles$percent_impossible[1], "%" ),
+    x=0.9,
+    y=0.9,
+    label.padding = unit(0.55, "lines"), # Rectangle size around label
+    label.size = 0.35,
+    color = "black",
+    fill="white"
+  )+
+geom_jitter( alpha = 1, size = 0.5)+facet_wrap(~profile, nrow = 3, ncol = 2)+coord_fixed(1)+
+  labs(y= "% of best performance", x = "Interval duration (s)") + 
+  geom_hline(yintercept=100, linetype="solid", color = "red", size = 0.5)+
+   theme_classic()+guides(fill = FALSE)+
+   scale_color_manual(values= c("black", "grey"))+
+   scale_x_continuous( limits = range(sprinter_skiba$interval_duration,pursuiter_skiba$interval_duration, all_around_skiba$interval_duration, time_trialist_skiba$interval_duration), breaks = seq(0, 360, 60))+
+   scale_y_continuous( limits = range(sprinter_skiba$percent_power_max,pursuiter_skiba$percent_power_max, all_around_skiba$percent_power_max, time_trialist_skiba$percent_power_max),breaks = seq(60, 660, 20))+guides(colour = FALSE)
+
+  
+ggsave(g1, file="Graphs/impossible_session_skiba_coggan_3_profiles.png")  
+
+```
+
+
+ 
+
+Faire les graphiques selon l'intensité en pourcentage de la PAM
+
+```{r}
+
+skiba <- skiba %>%
+  mutate(percent_PAM = power_skiba/ PAM *100)
+
+sprinter_skiba <- sprinter_skiba %>%
+    mutate(percent_PAM = power_skiba/ PAM *100)
+
+pursuiter_skiba <- pursuiter_skiba %>%
+    mutate(percent_PAM = power_skiba/ PAM *100)
+
+time_trialist_skiba <- time_trialist_skiba %>%
+    mutate(percent_PAM = power_skiba/ PAM *100)
+
+all_around_skiba <- all_around_skiba %>%
+    mutate(percent_PAM = power_skiba/ PAM *100)
+
+coggan <- coggan%>%
+  mutate(percent_PAM = power_cogganTSS/ PAM *100)
+
+sprinter_coggan <- sprinter_coggan %>%
+    mutate(percent_PAM = power_cogganTSS/ PAM *100)
+
+pursuiter_coggan <- pursuiter_coggan %>%
+    mutate(percent_PAM = power_cogganTSS/ PAM *100)
+
+time_trialist_coggan <- time_trialist_coggan %>%
+    mutate(percent_PAM = power_cogganTSS/ PAM *100)
+
+all_around_coggan <- all_around_coggan %>%
+    mutate(percent_PAM = power_cogganTSS/ PAM *100)
+
+
+
+
+```
+
+
+Répéter pour le temps cumulé à intensité
+
+
+
+```{r}
+skiba <- skiba %>%
+  mutate(cumul_time = Nrep * interval_duration)
+
+sprinter_skiba <- sprinter_skiba %>%
+    mutate(cumul_time = Nrep * interval_duration)
+
+pursuiter_skiba <- pursuiter_skiba %>%
+    mutate(cumul_time = Nrep * interval_duration)
+
+time_trialist_skiba <- time_trialist_skiba %>%
+    mutate(cumul_time = Nrep * interval_duration)
+
+all_around_skiba <- all_around_skiba %>%
+    mutate(cumul_time = Nrep * interval_duration)
+
+coggan <- coggan %>%
+  mutate(cumul_time = Nrep * interval_duration)
+
+sprinter_coggan <- sprinter_coggan %>%
+    mutate(cumul_time = Nrep * interval_duration)
+
+pursuiter_coggan <- pursuiter_coggan %>%
+    mutate(cumul_time = Nrep * interval_duration)
+
+time_trialist_coggan <- time_trialist_coggan %>%
+    mutate(cumul_time = Nrep * interval_duration)
+
+all_around_coggan <- all_around_coggan %>%
+    mutate(cumul_time = Nrep * interval_duration)
+
+
+
+
+
+``` 
+
+Sauvegarder les différents data frames pour une analyse future
+
+```{r}
+
+write_csv(skiba, "seances_purdy/skiba_percent_perf.csv")
+write_csv(coggan, "seances_purdy/coggan_percent_perf.csv")
+
+write_csv(sprinter_skiba, "seances_purdy/sprinter_skiba_percent_perf.csv")
+write_csv(pursuiter_skiba, "seances_purdy/pursuiter_skiba_percent_perf.csv")
+write_csv(time_trialist_skiba, "seances_purdy/time_trialist_skiba_percent_perf.csv")
+write_csv(all_around_skiba, "seances_purdy/all_around_skiba_percent_perf.csv")
+write_csv(sprinter_coggan, "seances_purdy/sprinter_coggan_percent_perf.csv")
+write_csv(pursuiter_coggan, "seances_purdy/pursuiter_coggan_percent_perf.csv")
+write_csv(time_trialist_coggan, "seances_purdy/time_trialist_coggan_percent_perf.csv")
+write_csv(all_around_coggan, "seances_purdy/all_around_coggan_percent_perf.csv")
+```
+
+
+
+
+

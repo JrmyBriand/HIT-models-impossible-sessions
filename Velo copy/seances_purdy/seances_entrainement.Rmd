@@ -1,0 +1,65 @@
+---
+title: "seances_entraînement_Purdy"
+author: "Jeremy Briand"
+date: "18/02/2021"
+output: html_document
+---
+
+
+Code pour générer le patron des séances d'entraînements du modèle de Purdy.
+
+Loader les packages
+
+```{r}
+library(easypackages)
+packages("dplyr", "tidyr", "readr", "readxl", "plot3D", "plot3Drgl", "hms", "plotly", "htmlwidgets")
+```
+
+
+Créer des séances selon les différentes possibilités de variation des différents paramèetres
+
+
+
+```{r}
+rep<- seq(2, 20, 1)
+rest <- seq(15, 300, 15)
+int_duration <- seq(15, 300, 15)   
+
+```
+
+
+
+
+créer un data frame avec les possibilités d'entraînement
+
+```{r}
+
+trainings <- data.frame()
+
+for(k in int_duration){
+  for(j in rest){
+  for(i in rep){
+  v <- data.frame(
+    Nrep = i,
+    rest = j,
+    interval_duration = k
+  )
+   trainings <- bind_rows( trainings, v)
+  }
+  }
+}
+
+#s'assurer qu'il n'y a pas de doublons
+trainings <- unique(trainings)
+
+```
+
+
+sauvegarder les séances en format csv dans le fichier seances_purdy
+
+```{r}
+write_csv(trainings, "seances.csv")
+
+```
+
+

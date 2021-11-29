@@ -1,0 +1,2603 @@
+---
+title: "percentage_analysis_histogram"
+author: "Jeremy Briand"
+date: "28/09/2021"
+output: html_document
+---
+
+Importer les librairies
+
+```{r}
+library(easypackages)
+packages("dplyr", "tidyr", "readr", "readxl", "plot3D", "plot3Drgl", "hms", "plotly", "htmlwidgets")
+library(arules)
+```
+
+Importer les jeux de données
+
+
+
+```{r}
+
+
+sprinter_skiba <- read_csv( "seances_purdy/sprinter_skiba_percent_perf.csv")
+pursuiter_skiba <- read_csv( "seances_purdy/pursuiter_skiba_percent_perf.csv")
+time_trialist_skiba <- read_csv( "seances_purdy/time_trialist_skiba_percent_perf.csv")
+all_around_skiba <- read_csv( "seances_purdy/all_around_skiba_percent_perf.csv")
+sprinter_coggan <- read_csv( "seances_purdy/sprinter_coggan_percent_perf.csv")
+pursuiter_coggan <- read_csv( "seances_purdy/pursuiter_coggan_percent_perf.csv")
+time_trialist_coggan <-read_csv("seances_purdy/time_trialist_coggan_percent_perf.csv")
+all_around_coggan <- read_csv("seances_purdy/all_around_coggan_percent_perf.csv")
+
+
+```
+
+Calculer le pourcentage de séances impossibles selon le modèle et le profil
+
+```{r}
+
+#sprinter coggan
+imp_sprinter_coggan <- sprinter_coggan %>%
+  filter(percent_power_max > 100)
+
+percent_imp_sprinter_coggan <-  length(imp_sprinter_coggan$Nrep)/length(sprinter_coggan$Nrep) *100
+
+
+#pursuiter coggan
+
+imp_pursuiter_coggan <- pursuiter_coggan %>%
+  filter(percent_power_max > 100)
+
+percent_imp_pursuiter_coggan <-  length(imp_pursuiter_coggan$Nrep)/length(pursuiter_coggan$Nrep) *100
+
+#time_trialist coggan
+
+imp_time_trialist_coggan <- time_trialist_coggan %>%
+  filter(percent_power_max > 100)
+
+percent_imp_time_trialist_coggan <-  length(imp_time_trialist_coggan$Nrep)/length(time_trialist_coggan$Nrep) *100
+
+#All around coggan
+
+imp_all_around_coggan <- all_around_coggan %>%
+  filter(percent_power_max > 100)
+
+percent_imp_all_around_coggan <-  length(imp_all_around_coggan$Nrep)/length(all_around_coggan$Nrep) *100
+
+
+#sprinter skiba
+imp_sprinter_skiba <- sprinter_skiba %>%
+  filter(percent_power_max > 100)
+
+percent_imp_sprinter_skiba <-  length(imp_sprinter_skiba$Nrep)/length(sprinter_skiba$Nrep) *100
+
+
+#pursuiter skiba
+
+imp_pursuiter_skiba <- pursuiter_skiba %>%
+  filter(percent_power_max > 100)
+
+percent_imp_pursuiter_skiba <-  length(imp_pursuiter_skiba$Nrep)/length(pursuiter_skiba$Nrep) *100
+
+#time_trialist skiba
+
+imp_time_trialist_skiba <- time_trialist_skiba %>%
+  filter(percent_power_max > 100)
+
+percent_imp_time_trialist_skiba <-  length(imp_time_trialist_skiba$Nrep)/length(time_trialist_skiba$Nrep) *100
+
+#All around skiba
+
+imp_all_around_skiba <- all_around_skiba %>%
+  filter(percent_power_max > 100)
+
+percent_imp_all_around_skiba <-  length(imp_all_around_skiba$Nrep)/length(all_around_skiba$Nrep) *100
+
+
+
+#créer un data frame pour un tableau
+
+percentage_impossible <- data.frame(sprinter_coggan = percent_imp_sprinter_coggan,
+                                    pursuiter_coggan = percent_imp_pursuiter_coggan,
+                                    time_trialist_coggan = percent_imp_time_trialist_coggan,
+                                    sall_around_coggan = percent_imp_all_around_coggan,
+                                    sprinter_skiba = percent_imp_sprinter_skiba,
+                                    pursuiter_skiba = percent_imp_pursuiter_skiba,
+                                    time_trialist_skiba = percent_imp_time_trialist_skiba,
+                                    all_around_skiba = percent_imp_all_around_skiba
+                             )
+
+
+```
+
+Créer un graphique pour l'intensité en pourcentage de la PAM pour coggan
+
+```{r}
+
+#Changer pour un pas de 30
+
+#valeur minimale Coggan
+
+min_coggan <- min(c(min(sprinter_coggan$percent_PAM),min(pursuiter_coggan$percent_PAM),min(time_trialist_coggan$percent_PAM), min(all_around_coggan$percent_PAM)))
+
+#Arrondir à la plus proche dizaine
+
+min_coggan_round <- round(min_coggan, digits = -1)
+
+#Valeur maximale Coggan
+max_coggan <- max(c(max(sprinter_coggan$percent_PAM),max(pursuiter_coggan$percent_PAM),max(time_trialist_coggan$percent_PAM), min(all_around_coggan$percent_PAM)))
+
+#Arrondir à la plus proche dizaine
+
+max_coggan_round <- round(max_coggan, digits = -1)
+
+
+#discretize les vecteurs pour l'endurance moyenne, faible, élevée
+
+#Sprinter
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+disc_sprinter_coggan_percent_PAM <- discretize(imp_sprinter_coggan$percent_PAM, method = "fixed", categories = seq(min_coggan_round, max_coggan_round, 20))
+
+c <- table(disc_sprinter_coggan_percent_PAM)
+
+count_imp <- c()
+for(i in 1:length(seq(min_coggan_round, max_coggan_round, 20))){
+  co <- c[i]
+  count_imp <- c(count_imp, co)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+disc_sprinter_coggan_percent_PAM <- discretize(sprinter_coggan$percent_PAM, method = "fixed", categories = seq(min_coggan_round, max_coggan_round, 20))
+
+c <- table(disc_sprinter_coggan_percent_PAM)
+
+count <- c()
+for(i in 1:length(seq(min_coggan_round, max_coggan_round, 20))){
+  co <- c[i]
+  count <- c(count, co)
+}
+
+count <- na.exclude(count)
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- seq(70, 410, 20)
+
+
+
+disc_sprinter <- data.frame(Profile = "sprinter",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_sprinter <- na.exclude(disc_sprinter)
+
+
+
+#pursuiter
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+disc_pursuiter_coggan_percent_PAM <- discretize(imp_pursuiter_coggan$percent_PAM, method = "fixed", categories = seq(min_coggan_round, max_coggan_round, 20))
+
+c <- table(disc_pursuiter_coggan_percent_PAM)
+
+count_imp <- c()
+for(i in 1:length(seq(min_coggan_round, max_coggan_round, 20))){
+  co <- c[i]
+  count_imp <- c(count_imp, co)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+disc_pursuiter_coggan_percent_PAM <- discretize(pursuiter_coggan$percent_PAM, method = "fixed", categories = seq(min_coggan_round, max_coggan_round, 20))
+
+c <- table(disc_pursuiter_coggan_percent_PAM)
+
+count <- c()
+for(i in 1:length(seq(min_coggan_round, max_coggan_round, 20))){
+  co <- c[i]
+  count <- c(count, co)
+}
+
+count <- na.exclude(count)
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- seq(70, 410, 20)
+
+
+
+disc_pursuiter <- data.frame(Profile = "pursuiter",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_pursuiter <- na.exclude(disc_pursuiter)
+
+
+
+#time-trialist
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+disc_time_trialist_coggan_percent_PAM <- discretize(imp_time_trialist_coggan$percent_PAM, method = "fixed", categories = seq(min_coggan_round, max_coggan_round, 20))
+
+c <- table(disc_time_trialist_coggan_percent_PAM)
+
+count_imp <- c()
+for(i in 1:length(seq(min_coggan_round, max_coggan_round, 20))){
+  co <- c[i]
+  count_imp <- c(count_imp, co)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+disc_time_trialist_coggan_percent_PAM <- discretize(time_trialist_coggan$percent_PAM, method = "fixed", categories = seq(min_coggan_round, max_coggan_round, 20))
+
+c <- table(disc_time_trialist_coggan_percent_PAM)
+
+count <- c()
+for(i in 1:length(seq(min_coggan_round, max_coggan_round, 20))){
+  co <- c[i]
+  count <- c(count, co)
+}
+
+count <- na.exclude(count)
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- seq(70, 410, 20)
+
+
+
+disc_time_trialist <- data.frame(Profile = "time-trialist",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_time_trialist <- na.exclude(disc_time_trialist)
+
+disc_time_trialist <- disc_time_trialist[disc_time_trialist$Interval != 190,]
+
+#all around
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+disc_all_around_coggan_percent_PAM <- discretize(imp_all_around_coggan$percent_PAM, method = "fixed", categories = seq(min_coggan_round, max_coggan_round, 20))
+
+c <- table(disc_all_around_coggan_percent_PAM)
+
+count_imp <- c()
+for(i in 1:length(seq(min_coggan_round, max_coggan_round, 20))){
+  co <- c[i]
+  count_imp <- c(count_imp, co)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+disc_all_around_coggan_percent_PAM <- discretize(all_around_coggan$percent_PAM, method = "fixed", categories = seq(min_coggan_round, max_coggan_round, 20))
+
+c <- table(disc_all_around_coggan_percent_PAM)
+
+count <- c()
+for(i in 1:length(seq(min_coggan_round, max_coggan_round, 20))){
+  co <- c[i]
+  count <- c(count, co)
+}
+
+count <- na.exclude(count)
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- seq(70, 410, 20)
+
+
+
+disc_all_around <- data.frame(Profile = "all around",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_all_around <- na.exclude(disc_all_around)
+
+disc_all_around <- disc_all_around[disc_all_around$Interval != 210,]
+
+#Joindre les 4 dataframe en un seul
+
+disc_coggan <- bind_rows(disc_sprinter, disc_pursuiter, disc_time_trialist, disc_all_around)
+
+#enlever le zéro qui apparaît à 210 endurance moyenne
+
+
+#renommer les facteurs
+disc_coggan$Profile <- factor(disc_coggan$Profile, levels = c("sprinter", "pursuiter", "time-trialist", 'all around'), labels = c("sprinter", "pursuiter", "time-trialist", "all around"))
+
+gci <- ggplot(data = disc_coggan, aes(x= Interval, y = Percent_imp, colour= Profile))+geom_line()+xlab("Intensity (percentage of MAP)") + ylab("% impossible sessions")+theme_classic()+ labs(colour='Athlete profile')+scale_x_continuous( limits = c(min_coggan_round, max_coggan_round), breaks = seq(0, 500, 50)) 
+
+```
+
+
+Créer un graphique pour l'intensité en pourcentage de la PAM pour coggan
+
+```{r}
+
+#changer pour un pas de 30
+
+#valeur minimale skiba
+
+min_skiba <- min(c(min(sprinter_skiba$percent_PAM),min(pursuiter_skiba$percent_PAM),min(time_trialist_skiba$percent_PAM), min(all_around_skiba$percent_PAM)))
+
+#Arrondir à la plus proche dizaine
+
+min_skiba_round <- round(min_skiba, digits = -1)
+
+#Valeur maximale skiba
+max_skiba <- max(c(max(sprinter_skiba$percent_PAM),max(pursuiter_skiba$percent_PAM),max(time_trialist_skiba$percent_PAM), min(all_around_skiba$percent_PAM)))
+
+#Arrondir à la plus proche dizaine
+
+max_skiba_round <- round(max_skiba, digits = -1)
+
+
+#discretize les vecteurs pour l'endurance moyenne, faible, élevée
+
+#Sprinter
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+disc_sprinter_skiba_percent_PAM <- discretize(imp_sprinter_skiba$percent_PAM, method = "fixed", categories = seq(min_skiba_round, max_skiba_round, 20))
+
+c <- table(disc_sprinter_skiba_percent_PAM)
+
+count_imp <- c()
+for(i in 1:length(seq(min_skiba_round, max_skiba_round, 20))){
+  co <- c[i]
+  count_imp <- c(count_imp, co)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+disc_sprinter_skiba_percent_PAM <- discretize(sprinter_skiba$percent_PAM, method = "fixed", categories = seq(min_skiba_round, max_skiba_round, 20))
+
+c <- table(disc_sprinter_skiba_percent_PAM)
+
+count <- c()
+for(i in 1:length(seq(min_skiba_round, max_skiba_round, 20))){
+  co <- c[i]
+  count <- c(count, co)
+}
+
+count <- na.exclude(count)
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- seq(70, 460, 20)
+
+
+
+disc_sprinter <- data.frame(Profile = "sprinter",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_sprinter <- na.exclude(disc_sprinter)
+
+
+
+#pursuiter
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+disc_pursuiter_skiba_percent_PAM <- discretize(imp_pursuiter_skiba$percent_PAM, method = "fixed", categories = seq(min_skiba_round, max_skiba_round, 20))
+
+c <- table(disc_pursuiter_skiba_percent_PAM)
+
+count_imp <- c()
+for(i in 1:length(seq(min_skiba_round, max_skiba_round, 20))){
+  co <- c[i]
+  count_imp <- c(count_imp, co)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+disc_pursuiter_skiba_percent_PAM <- discretize(pursuiter_skiba$percent_PAM, method = "fixed", categories = seq(min_skiba_round, max_skiba_round, 20))
+
+c <- table(disc_pursuiter_skiba_percent_PAM)
+
+count <- c()
+for(i in 1:length(seq(min_skiba_round, max_skiba_round, 20))){
+  co <- c[i]
+  count <- c(count, co)
+}
+
+count <- na.exclude(count)
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- seq(70, 450, 20)
+
+
+
+disc_pursuiter <- data.frame(Profile = "pursuiter",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_pursuiter <- na.exclude(disc_pursuiter)
+
+
+
+#time-trialist
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+disc_time_trialist_skiba_percent_PAM <- discretize(imp_time_trialist_skiba$percent_PAM, method = "fixed", categories = seq(min_skiba_round, max_skiba_round, 20))
+
+c <- table(disc_time_trialist_skiba_percent_PAM)
+
+count_imp <- c()
+for(i in 1:length(seq(min_skiba_round, max_skiba_round, 20))){
+  co <- c[i]
+  count_imp <- c(count_imp, co)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+disc_time_trialist_skiba_percent_PAM <- discretize(time_trialist_skiba$percent_PAM, method = "fixed", categories = seq(min_skiba_round, max_skiba_round, 20))
+
+c <- table(disc_time_trialist_skiba_percent_PAM)
+
+count <- c()
+for(i in 1:length(seq(min_skiba_round, max_skiba_round, 20))){
+  co <- c[i]
+  count <- c(count, co)
+}
+
+count <- na.exclude(count)
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- seq(70, 450, 20)
+
+
+
+disc_time_trialist <- data.frame(Profile = "time-trialist",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_time_trialist <- na.exclude(disc_time_trialist)
+
+#disc_time_trialist <- disc_time_trialist[disc_time_trialist$Interval != 190,]
+
+#all around
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+disc_all_around_skiba_percent_PAM <- discretize(imp_all_around_skiba$percent_PAM, method = "fixed", categories = seq(min_skiba_round, max_skiba_round, 20))
+
+c <- table(disc_all_around_skiba_percent_PAM)
+
+count_imp <- c()
+for(i in 1:length(seq(min_skiba_round, max_skiba_round, 20))){
+  co <- c[i]
+  count_imp <- c(count_imp, co)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+disc_all_around_skiba_percent_PAM <- discretize(all_around_skiba$percent_PAM, method = "fixed", categories = seq(min_skiba_round, max_skiba_round, 20))
+
+c <- table(disc_all_around_skiba_percent_PAM)
+
+count <- c()
+for(i in 1:length(seq(min_skiba_round, max_skiba_round, 20))){
+  co <- c[i]
+  count <- c(count, co)
+}
+
+count <- na.exclude(count)
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- seq(70, 450, 20)
+
+
+
+disc_all_around <- data.frame(Profile = "all around",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_all_around <- na.exclude(disc_all_around)
+
+#disc_all_around <- disc_all_around[disc_all_around$Interval != 210,]
+
+#Joindre les 4 dataframe en un seul
+
+disc_skiba <- bind_rows(disc_sprinter, disc_pursuiter, disc_time_trialist, disc_all_around)
+
+#enlever le zéro qui apparaît à 210 endurance moyenne
+
+
+#renommer les facteurs
+disc_skiba$Profile <- factor(disc_skiba$Profile, levels = c("sprinter", "pursuiter", "time-trialist", 'all around'), labels = c("sprinter", "pursuiter", "time-trialist", "all around"))
+
+gsi <- ggplot(data = disc_skiba, aes(x= Interval, y = Percent_imp, colour= Profile))+geom_line()+xlab("Intensity (percentage of MAP)") + ylab("% impossible sessions")+theme_classic()+ labs(colour='Athlete profile')+scale_x_continuous( limits = c(min_skiba_round, max_skiba_round), breaks = seq(0, 500, 50)) 
+
+```
+
+Créer un graphique pour la durée des fractions d'effort pour coggan
+
+```{r}
+#valeur minimale Coggan
+
+min_coggan <- min(c(min(sprinter_coggan$interval_duration),min(pursuiter_coggan$interval_duration),min(time_trialist_coggan$interval_duration), min(all_around_coggan$interval_duration)))
+
+
+#Valeur maximale Coggan
+max_coggan <- max(c(max(sprinter_coggan$interval_duration),max(pursuiter_coggan$interval_duration),max(time_trialist_coggan$interval_duration), min(all_around_coggan$interval_duration)))
+
+
+#La durée des intervalles va de 15 à 300, faire une loop qui itère sur ces valeurs et compte la longueur du dataframe résultant
+
+#discretize les vecteurs pour l'endurance moyenne, faible, élevée
+
+#sprinter
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+int_dur <- seq(15, 300, 15)
+
+count_imp <- c()
+for(i in int_dur){
+  co <- imp_sprinter_coggan%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in int_dur){
+  co <- sprinter_coggan%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- int_dur
+
+
+
+disc_sprinter <- data.frame(Profile = "sprinter",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_sprinter <- na.exclude(disc_sprinter)
+
+#pursuiter
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+int_dur <- seq(15, 300, 15)
+
+count_imp <- c()
+for(i in int_dur){
+  co <- imp_pursuiter_coggan%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in int_dur){
+  co <- pursuiter_coggan%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- int_dur
+
+
+
+disc_pursuiter <- data.frame(Profile = "pursuiter",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_pursuiter <- na.exclude(disc_pursuiter)
+
+
+#time_trialist
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+int_dur <- seq(15, 300, 15)
+
+count_imp <- c()
+for(i in int_dur){
+  co <- imp_time_trialist_coggan%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in int_dur){
+  co <- time_trialist_coggan%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- int_dur
+
+
+
+disc_time_trialist <- data.frame(Profile = "time-trialist",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_time_trialist <- na.exclude(disc_time_trialist)
+
+#all_around
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+int_dur <- seq(15, 300, 15)
+
+count_imp <- c()
+for(i in int_dur){
+  co <- imp_all_around_coggan%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in int_dur){
+  co <- all_around_coggan%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- int_dur
+
+
+
+disc_all_around <- data.frame(Profile = "all around",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_all_around <- na.exclude(disc_all_around)
+
+
+#Joindre les 4 dataframe en un seul
+
+disc_coggan <- bind_rows(disc_sprinter, disc_pursuiter, disc_time_trialist, disc_all_around)
+
+#enlever le zéro qui apparaît à 210 endurance moyenne
+
+
+#renommer les facteurs
+disc_coggan$Profile <- factor(disc_coggan$Profile, levels = c("sprinter", "pursuiter", "time-trialist", 'all around'), labels = c("sprinter", "pursuiter", "time-trialist", "all around"))
+
+gcint <- ggplot(data = disc_coggan, aes(x= Interval, y = Percent_imp, colour= Profile))+geom_line()+xlab("Interval duration (s)") + ylab("% impossible sessions")+theme_classic()+ labs(colour='Athlete profile')+scale_x_continuous( limits = c(min_coggan, max_coggan), breaks = seq(0, 300, 30)) 
+
+
+```
+
+
+Durée des intervalles SKiba
+
+```{r}
+#valeur minimale Coggan
+
+min_skiba <- min(c(min(sprinter_skiba$interval_duration),min(pursuiter_skiba$interval_duration),min(time_trialist_skiba$interval_duration), min(all_around_skiba$interval_duration)))
+
+
+#Valeur maximale skiba
+max_skiba <- max(c(max(sprinter_skiba$interval_duration),max(pursuiter_skiba$interval_duration),max(time_trialist_skiba$interval_duration), min(all_around_skiba$interval_duration)))
+
+
+#La durée des intervalles va de 15 à 300, faire une loop qui itère sur ces valeurs et compte la longueur du dataframe résultant
+
+#discretize les vecteurs pour l'endurance moyenne, faible, élevée
+
+#sprinter
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+int_dur <- seq(15, 300, 15)
+
+count_imp <- c()
+for(i in int_dur){
+  co <- imp_sprinter_skiba%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in int_dur){
+  co <- sprinter_skiba%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- int_dur
+
+
+
+disc_sprinter <- data.frame(Profile = "sprinter",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_sprinter <- na.exclude(disc_sprinter)
+
+#pursuiter
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+int_dur <- seq(15, 300, 15)
+
+count_imp <- c()
+for(i in int_dur){
+  co <- imp_pursuiter_skiba%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in int_dur){
+  co <- pursuiter_skiba%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- int_dur
+
+
+
+disc_pursuiter <- data.frame(Profile = "pursuiter",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_pursuiter <- na.exclude(disc_pursuiter)
+
+
+#time_trialist
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+int_dur <- seq(15, 300, 15)
+
+count_imp <- c()
+for(i in int_dur){
+  co <- imp_time_trialist_skiba%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in int_dur){
+  co <- time_trialist_skiba%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- int_dur
+
+
+
+disc_time_trialist <- data.frame(Profile = "time-trialist",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_time_trialist <- na.exclude(disc_time_trialist)
+
+#all_around
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+int_dur <- seq(15, 300, 15)
+
+count_imp <- c()
+for(i in int_dur){
+  co <- imp_all_around_skiba%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in int_dur){
+  co <- all_around_skiba%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- int_dur
+
+
+
+disc_all_around <- data.frame(Profile = "all around",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_all_around <- na.exclude(disc_all_around)
+
+
+#Joindre les 4 dataframe en un seul
+
+disc_skiba <- bind_rows(disc_sprinter, disc_pursuiter, disc_time_trialist, disc_all_around)
+
+#enlever le zéro qui apparaît à 210 endurance moyenne
+
+
+#renommer les facteurs
+disc_skiba$Profile <- factor(disc_skiba$Profile, levels = c("sprinter", "pursuiter", "time-trialist", 'all around'), labels = c("sprinter", "pursuiter", "time-trialist", "all around"))
+
+gsint <- ggplot(data = disc_skiba, aes(x= Interval, y = Percent_imp, colour= Profile))+geom_line()+xlab("Interval duration (s)") + ylab("% impossible sessions")+theme_classic()+ labs(colour='Athlete profile')+scale_x_continuous( limits = c(min_skiba, max_skiba), breaks = seq(0, 300, 30)) 
+
+
+```
+
+Nombre de répétitions Coggan
+
+```{r}
+
+
+#valeur minimale coggan
+
+min_coggan <- min(c(min(sprinter_coggan$Nrep),min(pursuiter_coggan$Nrep),min(time_trialist_coggan$Nrep), min(all_around_coggan$Nrep)))
+
+
+#Valeur maximale coggan
+max_coggan <- max(c(max(sprinter_coggan$Nrep),max(pursuiter_coggan$Nrep),max(time_trialist_coggan$Nrep), min(all_around_coggan$Nrep)))
+
+
+#La durée des intervalles va de 15 à 300, faire une loop qui itère sur ces valeurs et compte la longueur du dataframe résultant
+
+#discretize les vecteurs pour l'endurance moyenne, faible, élevée
+
+#sprinter
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+nrep <- seq(2,20,1)
+
+count_imp <- c()
+for(i in nrep){
+  co <- imp_sprinter_coggan%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in nrep){
+  co <- sprinter_coggan%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- nrep
+
+
+
+disc_sprinter <- data.frame(Profile = "sprinter",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_sprinter <- na.exclude(disc_sprinter)
+
+#pursuiter
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+nrep <- seq(2,20,1)
+
+count_imp <- c()
+for(i in nrep){
+  co <- imp_pursuiter_coggan%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in nrep){
+  co <- pursuiter_coggan%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- nrep
+
+
+
+disc_pursuiter <- data.frame(Profile = "pursuiter",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_pursuiter <- na.exclude(disc_pursuiter)
+
+
+#time_trialist
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+nrep <- seq(2,20,1)
+
+count_imp <- c()
+for(i in nrep){
+  co <- imp_time_trialist_coggan%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in nrep){
+  co <- time_trialist_coggan%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- nrep
+
+
+
+disc_time_trialist <- data.frame(Profile = "time-trialist",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_time_trialist <- na.exclude(disc_time_trialist)
+
+#all_around
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+nrep <- seq(2,20,1)
+
+count_imp <- c()
+for(i in nrep){
+  co <- imp_all_around_coggan%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in nrep){
+  co <- all_around_coggan%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- nrep
+
+
+
+disc_all_around <- data.frame(Profile = "all around",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_all_around <- na.exclude(disc_all_around)
+
+
+#Joindre les 4 dataframe en un seul
+
+disc_coggan <- bind_rows(disc_sprinter, disc_pursuiter, disc_time_trialist, disc_all_around)
+
+#enlever le zéro qui apparaît à 210 endurance moyenne
+
+
+#renommer les facteurs
+disc_coggan$Profile <- factor(disc_coggan$Profile, levels = c("sprinter", "pursuiter", "time-trialist", 'all around'), labels = c("sprinter", "pursuiter", "time-trialist", "all around"))
+
+gNrepc <- ggplot(data = disc_coggan, aes(x= Interval, y = Percent_imp, colour= Profile))+geom_line()+xlab("Number of repetitions") + ylab("% impossible sessions")+theme_classic()+ labs(colour='Athlete profile')+scale_x_continuous( limits = c(min_coggan, max_coggan), breaks = seq(0, 300, 30)) 
+
+
+```
+
+
+Nombre de répétitions Skiba
+
+```{r}
+
+
+#valeur minimale skiba
+
+min_skiba <- min(c(min(sprinter_skiba$Nrep),min(pursuiter_skiba$Nrep),min(time_trialist_skiba$Nrep), min(all_around_skiba$Nrep)))
+
+
+#Valeur maximale skiba
+max_skiba <- max(c(max(sprinter_skiba$Nrep),max(pursuiter_skiba$Nrep),max(time_trialist_skiba$Nrep), min(all_around_skiba$Nrep)))
+
+
+#La durée des intervalles va de 15 à 300, faire une loop qui itère sur ces valeurs et compte la longueur du dataframe résultant
+
+#discretize les vecteurs pour l'endurance moyenne, faible, élevée
+
+#sprinter
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+nrep <- seq(2,20,1)
+
+count_imp <- c()
+for(i in nrep){
+  co <- imp_sprinter_skiba%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in nrep){
+  co <- sprinter_skiba%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- nrep
+
+
+
+disc_sprinter <- data.frame(Profile = "sprinter",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_sprinter <- na.exclude(disc_sprinter)
+
+#pursuiter
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+nrep <- seq(2,20,1)
+
+count_imp <- c()
+for(i in nrep){
+  co <- imp_pursuiter_skiba%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in nrep){
+  co <- pursuiter_skiba%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- nrep
+
+
+
+disc_pursuiter <- data.frame(Profile = "pursuiter",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_pursuiter <- na.exclude(disc_pursuiter)
+
+
+#time_trialist
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+nrep <- seq(2,20,1)
+
+count_imp <- c()
+for(i in nrep){
+  co <- imp_time_trialist_skiba%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in nrep){
+  co <- time_trialist_skiba%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- nrep
+
+
+
+disc_time_trialist <- data.frame(Profile = "time-trialist",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_time_trialist <- na.exclude(disc_time_trialist)
+
+#all_around
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+nrep <- seq(2,20,1)
+
+count_imp <- c()
+for(i in nrep){
+  co <- imp_all_around_skiba%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in nrep){
+  co <- all_around_skiba%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- nrep
+
+
+
+disc_all_around <- data.frame(Profile = "all around",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_all_around <- na.exclude(disc_all_around)
+
+
+#Joindre les 4 dataframe en un seul
+
+disc_skiba <- bind_rows(disc_sprinter, disc_pursuiter, disc_time_trialist, disc_all_around)
+
+#enlever le zéro qui apparaît à 210 endurance moyenne
+
+
+#renommer les facteurs
+disc_skiba$Profile <- factor(disc_skiba$Profile, levels = c("sprinter", "pursuiter", "time-trialist", 'all around'), labels = c("sprinter", "pursuiter", "time-trialist", "all around"))
+
+gNrepS <- ggplot(data = disc_skiba, aes(x= Interval, y = Percent_imp, colour= Profile))+geom_line()+xlab("Number of repetitions") + ylab("% impossible sessions")+theme_classic()+ labs(colour='Athlete profile')+scale_x_continuous( limits = c(min_skiba, max_skiba), breaks = seq(0, 300, 30)) 
+
+
+```
+
+
+Faire un graphique pour la durée des intervalles avec skiba
+
+```{r}
+#valeur minimale skiba
+
+min_skiba <- min(c(min(end_e_skiba$interval_duration),min(end_m_skiba$interval_duration),min(end_f_skiba$interval_duration)))
+
+
+#Valeur maximale skiba
+max_skiba <- max(c(max(end_e_skiba$interval_duration),max(end_m_skiba$interval_duration),max(end_f_skiba$interval_duration)))
+
+
+#La durée des intervalles va de 15 à 300, faire une loop qui itère sur ces valeurs et compte la longueur du dataframe résultant
+
+#discretize les vecteurs pour l'endurance moyenne, faible, élevée
+
+#faible
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+int_dur <- seq(15, 300, 15)
+
+count_imp <- c()
+for(i in int_dur){
+  co <- imp_end_f_skiba%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in int_dur){
+  co <- end_f_skiba%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- int_dur
+
+
+
+disc_end_f <- data.frame(Endurance = "low endurance",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_end_f <- na.exclude(disc_end_f)
+
+
+#moyenne
+
+int_dur <- seq(15, 300, 15)
+
+count_imp <- c()
+for(i in int_dur){
+  co <- imp_end_m_skiba%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in int_dur){
+  co <- end_m_skiba%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- int_dur
+
+
+
+disc_end_m <- data.frame(Endurance = "average endurance",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_end_m <- na.exclude(disc_end_m)
+
+
+#élevée
+
+int_dur <- seq(15, 300, 15)
+
+count_imp <- c()
+for(i in int_dur){
+  co <- imp_end_e_skiba%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in int_dur){
+  co <- end_e_skiba%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- int_dur
+
+
+
+disc_end_e <- data.frame(Endurance = "high endurance",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_end_e <- na.exclude(disc_end_e)
+
+
+#Joindre les 3 dataframe en un seul
+
+disc_skiba <- bind_rows(disc_end_f, disc_end_m, disc_end_e)
+
+#enlever le zéro qui apparaît à 210 endurance moyenne
+
+
+#renommer les facteurs
+disc_skiba$Endurance <- factor(disc_skiba$Endurance, levels = c("low endurance", "average endurance", "high endurance"), labels = c("low endurance", "average endurance", "high endurance"))
+
+gsdur <- ggplot(data = disc_skiba, aes(x= Interval, y = Percent_imp, colour= Endurance))+geom_line()+xlab("Interval duration (s)") + ylab("% impossible sessions")+theme_classic()+ labs(colour='Athlete profile')+scale_x_continuous( limits = c(min_skiba, max_skiba), breaks = seq(0, 300, 30)) + theme(legend.position = c(0.7, 0.8))
+
+```
+
+Nombre de répétitions
+
+```{r}
+
+#valeur minimale Coggan
+
+min_coggan <- min(c(min(sprinter_coggan$interval_duration),min(pursuiter_coggan$interval_duration),min(time_trialist_coggan$interval_duration), min(all_around_coggan$interval_duration)))
+
+
+#Valeur maximale Coggan
+max_coggan <- max(c(max(sprinter_coggan$interval_duration),max(pursuiter_coggan$interval_duration),max(time_trialist_coggan$interval_duration), min(all_around_coggan$interval_duration)))
+
+
+#La durée des intervalles va de 15 à 300, faire une loop qui itère sur ces valeurs et compte la longueur du dataframe résultant
+
+#discretize les vecteurs pour l'endurance moyenne, faible, élevée
+
+#sprinter
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+int_dur <- seq(15, 300, 15)
+
+count_imp <- c()
+for(i in int_dur){
+  co <- imp_sprinter_coggan%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in int_dur){
+  co <- sprinter_coggan%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- int_dur
+
+
+
+disc_sprinter <- data.frame(Profile = "sprinter",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_sprinter <- na.exclude(disc_sprinter)
+
+#pursuiter
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+int_dur <- seq(15, 300, 15)
+
+count_imp <- c()
+for(i in int_dur){
+  co <- imp_pursuiter_coggan%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in int_dur){
+  co <- pursuiter_coggan%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- int_dur
+
+
+
+disc_pursuiter <- data.frame(Profile = "pursuiter",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_pursuiter <- na.exclude(disc_pursuiter)
+
+
+#time_trialist
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+int_dur <- seq(15, 300, 15)
+
+count_imp <- c()
+for(i in int_dur){
+  co <- imp_time_trialist_coggan%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in int_dur){
+  co <- time_trialist_coggan%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- int_dur
+
+
+
+disc_time_trialist <- data.frame(Profile = "time-trialist",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_time_trialist <- na.exclude(disc_time_trialist)
+
+#all_around
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+int_dur <- seq(15, 300, 15)
+
+count_imp <- c()
+for(i in int_dur){
+  co <- imp_all_around_coggan%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in int_dur){
+  co <- all_around_coggan%>%
+    filter(interval_duration == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- int_dur
+
+
+
+disc_all_around <- data.frame(Profile = "all around",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_all_around <- na.exclude(disc_all_around)
+
+
+#Joindre les 4 dataframe en un seul
+
+disc_coggan <- bind_rows(disc_sprinter, disc_pursuiter, disc_time_trialist, disc_all_around)
+
+#enlever le zéro qui apparaît à 210 endurance moyenne
+
+
+#renommer les facteurs
+disc_coggan$Profile <- factor(disc_coggan$Profile, levels = c("sprinter", "pursuiter", "time-trialist", 'all around'), labels = c("sprinter", "pursuiter", "time-trialist", "all around"))
+
+gcint <- ggplot(data = disc_coggan, aes(x= Interval, y = Percent_imp, colour= Profile))+geom_line()+xlab("Interval duration (s)") + ylab("% impossible sessions")+theme_classic()+ labs(colour='Athlete profile')+scale_x_continuous( limits = c(min_coggan, max_coggan), breaks = seq(0, 300, 30)) 
+
+
+```
+
+
+
+faire un graphique du pourcentage de séance impossible selon le nombre de répétition pour Coggan
+
+```{r}
+#valeur minimale Coggan
+
+min_coggan <- min(c(min(end_e_coggan$Nrep),min(end_m_coggan$Nrep),min(end_f_coggan$Nrep)))
+
+
+#Valeur maximale Coggan
+max_coggan <- max(c(max(end_e_coggan$Nrep),max(end_m_coggan$Nrep),max(end_f_coggan$Nrep)))
+
+
+#La durée des intervalles va de 15 à 300, faire une loop qui itère sur ces valeurs et compte la longueur du dataframe résultant
+
+#discretize les vecteurs pour l'endurance moyenne, faible, élevée
+
+#faible
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+nrep <- seq(2,20,1)
+
+count_imp <- c()
+for(i in nrep){
+  co <- imp_end_f_coggan%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in nrep){
+  co <- end_f_coggan%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- nrep
+
+
+
+disc_end_f <- data.frame(Endurance = "low endurance",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_end_f <- na.exclude(disc_end_f)
+
+
+#moyenne
+
+nrep <- seq(2,20,1)
+
+count_imp <- c()
+for(i in nrep){
+  co <- imp_end_m_coggan%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in nrep){
+  co <- end_m_coggan%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- nrep
+
+
+
+disc_end_m <- data.frame(Endurance = "average endurance",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_end_m <- na.exclude(disc_end_m)
+
+
+#élevée
+
+nrep <- seq(2,20,1)
+
+count_imp <- c()
+for(i in nrep){
+  co <- imp_end_e_coggan%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in nrep){
+  co <- end_e_coggan%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- nrep
+
+
+
+disc_end_e <- data.frame(Endurance = "high endurance",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_end_e <- na.exclude(disc_end_e)
+
+
+#Joindre les 3 dataframe en un seul
+
+disc_coggan <- bind_rows(disc_end_f, disc_end_m, disc_end_e)
+
+#enlever le zéro qui apparaît à 210 endurance moyenne
+
+
+#renommer les facteurs
+disc_coggan$Endurance <- factor(disc_coggan$Endurance, levels = c("low endurance", "average endurance", "high endurance"), labels = c("low endurance", "average endurance", "high endurance"))
+
+gcnrep <- ggplot(data = disc_coggan, aes(x= Interval, y = Percent_imp, colour= Endurance))+geom_line()+xlab("Number of repetitions") + ylab("% impossible sessions")+theme_classic()+ labs(colour='Athlete profile')+scale_x_continuous( limits = c(min_coggan, max_coggan), breaks = seq(0, 20, 2)) 
+
+```
+
+faire un graphique du pourcentage de séance impossible selon le nombre de répétition pour Skiba
+
+```{r}
+#valeur minimale skiba
+
+min_skiba <- min(c(min(end_e_skiba$Nrep),min(end_m_skiba$Nrep),min(end_f_skiba$Nrep)))
+
+
+#Valeur maximale skiba
+max_skiba <- max(c(max(end_e_skiba$Nrep),max(end_m_skiba$Nrep),max(end_f_skiba$Nrep)))
+
+
+#Le nombre de repetitions va de 2 à 20, faire une loop qui itère sur ces valeurs et compte la longueur du dataframe résultant
+
+#discretize les vecteurs pour l'endurance moyenne, faible, élevée
+
+#faible
+
+#compter le nombre de séance impossible dans chaque intervalle
+
+nrep <- seq(2,20,1)
+
+count_imp <- c()
+for(i in nrep){
+  co <- imp_end_f_skiba%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in nrep){
+  co <- end_f_skiba%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- nrep
+
+
+
+disc_end_f <- data.frame(Endurance = "low endurance",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_end_f <- na.exclude(disc_end_f)
+
+#disc_end_f <- disc_end_f[disc_end_f$Nrep != 13,]
+
+
+#moyenne
+
+nrep <- seq(2,20,1)
+
+count_imp <- c()
+for(i in nrep){
+  co <- imp_end_m_skiba%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in nrep){
+  co <- end_m_skiba%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- nrep
+
+
+
+disc_end_m <- data.frame(Endurance = "average endurance",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_end_m <- na.exclude(disc_end_m)
+
+
+#élevée
+
+nrep <- seq(2,20,1)
+
+count_imp <- c()
+for(i in nrep){
+  co <- imp_end_e_skiba%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in nrep){
+  co <- end_e_skiba%>%
+    filter(Nrep == i)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- nrep
+
+
+
+disc_end_e <- data.frame(Endurance = "high endurance",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_end_e <- na.exclude(disc_end_e)
+
+
+#Joindre les 3 dataframe en un seul
+
+disc_skiba <- bind_rows(disc_end_f, disc_end_m, disc_end_e)
+
+#enlever le zéro qui apparaît à 210 endurance moyenne
+
+
+#renommer les facteurs
+disc_skiba$Endurance <- factor(disc_skiba$Endurance, levels = c("low endurance", "average endurance", "high endurance"), labels = c("low endurance", "average endurance", "high endurance"))
+
+gsnrep <- ggplot(data = disc_skiba, aes(x= Interval, y = Percent_imp, colour= Endurance))+geom_line()+xlab("Number of repetitions") + ylab("% impossible sessions")+theme_classic()+ labs(colour='Athlete profile')+scale_x_continuous( limits = c(min_skiba, max_skiba), breaks = seq(0, 20, 2)) 
+
+```
+
+graphique du temps total cumulé à intensité Coggan
+
+```{r}
+#valeur minimale Coggan
+
+min_coggan <- min(c(min(end_e_coggan$cumul_time),min(end_m_coggan$cumul_time),min(end_f_coggan$cumul_time)))
+
+
+#Valeur maximale Coggan
+max_coggan <- max(c(max(end_e_coggan$cumul_time),max(end_m_coggan$cumul_time),max(end_f_coggan$cumul_time)))
+
+#vecteur de durées d'intervalles
+
+c_time <- seq(0, 4800, 100)
+
+
+#endurance faible
+
+count_imp <- c()
+for(i in c_time){
+  co <- imp_end_f_coggan%>%
+    filter(cumul_time > i,
+           cumul_time <= cumul_time + 100)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in c_time){
+  co <- end_f_coggan%>%
+    filter(cumul_time > i,
+           cumul_time <= cumul_time + 100)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- c_time +50
+
+
+
+disc_end_f <- data.frame(Endurance = "low endurance",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_end_f <- na.exclude(disc_end_f)
+
+#endurance moyenne
+
+count_imp <- c()
+for(i in c_time){
+  co <- imp_end_m_coggan%>%
+    filter(cumul_time > i,
+           cumul_time <= cumul_time + 100)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in c_time){
+  co <- end_m_coggan%>%
+    filter(cumul_time > i,
+           cumul_time <= cumul_time + 100)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- c_time +50
+
+
+
+disc_end_m <- data.frame(Endurance = "average endurance",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_end_m <- na.exclude(disc_end_m)
+
+#endurance élevée
+
+count_imp <- c()
+for(i in c_time){
+  co <- imp_end_e_coggan%>%
+    filter(cumul_time > i,
+           cumul_time <= cumul_time + 100)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in c_time){
+  co <- end_e_coggan%>%
+    filter(cumul_time > i,
+           cumul_time <= cumul_time + 100)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- c_time +50
+
+
+
+disc_end_e <- data.frame(Endurance = "high endurance",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_end_e <- na.exclude(disc_end_e)
+
+#Joindre les 3 dataframe en un seul
+
+disc_coggan <- bind_rows(disc_end_f, disc_end_m, disc_end_e)
+
+#enlever le zéro qui apparaît à 210 endurance moyenne
+
+
+#renommer les facteurs
+disc_coggan$Endurance <- factor(disc_coggan$Endurance, levels = c("low endurance", "average endurance", "high endurance"), labels = c("low endurance", "average endurance", "high endurance"))
+
+gctarget <- ggplot(data = disc_coggan, aes(x= Interval, y = Percent_imp, colour= Endurance))+geom_line()+xlab("Total time at target intensity (s)") + ylab("% impossible sessions")+theme_classic()+ labs(colour='Athlete profile')+scale_x_continuous( limits = c(min_coggan, 1000), breaks = seq(60, 960, 120)) 
+
+
+```
+
+graphique du temps total cumulé à intensité skiba
+
+```{r}
+#valeur minimale skiba
+
+min_skiba <- min(c(min(end_e_skiba$cumul_time),min(end_m_skiba$cumul_time),min(end_f_skiba$cumul_time)))
+
+
+#Valeur maximale skiba
+max_skiba <- max(c(max(end_e_skiba$cumul_time),max(end_m_skiba$cumul_time),max(end_f_skiba$cumul_time)))
+
+#vecteur de durées d'intervalles
+
+c_time <- seq(0, 4800, 100)
+
+
+#endurance faible
+
+count_imp <- c()
+for(i in c_time){
+  co <- imp_end_f_skiba%>%
+    filter(cumul_time > i,
+           cumul_time <= cumul_time + 100)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in c_time){
+  co <- end_f_skiba%>%
+    filter(cumul_time > i,
+           cumul_time <= cumul_time + 100)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- c_time +50
+
+
+
+disc_end_f <- data.frame(Endurance = "low endurance",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_end_f <- na.exclude(disc_end_f)
+
+#endurance moyenne
+
+count_imp <- c()
+for(i in c_time){
+  co <- imp_end_m_skiba%>%
+    filter(cumul_time > i,
+           cumul_time <= cumul_time + 100)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in c_time){
+  co <- end_m_skiba%>%
+    filter(cumul_time > i,
+           cumul_time <= cumul_time + 100)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- c_time +50
+
+
+
+disc_end_m <- data.frame(Endurance = "average endurance",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_end_m <- na.exclude(disc_end_m)
+
+#endurance élevée
+
+count_imp <- c()
+for(i in c_time){
+  co <- imp_end_e_skiba%>%
+    filter(cumul_time > i,
+           cumul_time <= cumul_time + 100)
+  
+  c <- length(co$Nrep)
+  
+  count_imp <- c(count_imp, c)
+}
+
+count_imp <- na.exclude(count_imp)
+
+#Compter le nombre total de séance dans chaque intervalle
+
+
+count <- c()
+for(i in c_time){
+  co <- end_e_skiba%>%
+    filter(cumul_time > i,
+           cumul_time <= cumul_time + 100)
+  
+  c <- length(co$Nrep)
+  
+  count <- c(count, c)
+}
+
+count <- na.exclude(count)
+
+
+#calculer le pourcentage de séance impossible pour chaque intervalle
+
+percent_imp <- count_imp/count *100
+
+intervals <- c_time +50
+
+
+
+disc_end_e <- data.frame(Endurance = "high endurance",
+                         Interval = intervals,
+                         Percent_imp = percent_imp)
+
+disc_end_e <- na.exclude(disc_end_e)
+
+#Joindre les 3 dataframe en un seul
+
+disc_skiba <- bind_rows(disc_end_f, disc_end_m, disc_end_e)
+
+#enlever le zéro qui apparaît à 210 endurance moyenne
+
+
+#renommer les facteurs
+disc_skiba$Endurance <- factor(disc_skiba$Endurance, levels = c("low endurance", "average endurance", "high endurance"), labels = c("low endurance", "average endurance", "high endurance"))
+
+gstarget <- ggplot(data = disc_skiba, aes(x= Interval, y = Percent_imp, colour= Endurance))+geom_line()+xlab("Total time at target intensity (s)") + ylab("% impossible sessions")+theme_classic()+ labs(colour='Athlete profile')+scale_x_continuous( limits = c(min_skiba, 2200), breaks = seq(60, 2200, 240)) 
+
+
+```
+
+
+Joindre les graphiques de Coggan ensemble
+
+```{r}
+library(gridExtra)
+library(ggplot2)
+library(cowplot)
+
+
+ prow_coggan <- plot_grid(gci + theme(legend.position="none") ,
+                   gcdur + theme(legend.key.size = unit(0.4, "cm")),
+                   gcnrep + theme(legend.position="none"),
+                   gctarget + theme(legend.position="none"),
+          labels = c('A', 'B', 'C', 'D'),         
+          align = "vh", 
+          nrow = 2,
+          ncol = 2, 
+          rel_heights = c(1/2, 1/2))
+
+ggsave(prow_coggan, file="Graphs/percent_imp_coggan.png")
+
+```
+
+Joindre les graphiques de Skiba ensemble
+
+```{r}
+library(gridExtra)
+library(ggplot2)
+library(cowplot)
+
+
+ prow_skiba <- plot_grid(gsi + theme(legend.position="none") ,
+                   gsdur + theme(legend.key.size = unit(0.4, "cm")),
+                   gsnrep + theme(legend.position="none"),
+                   gstarget + theme(legend.position="none"),
+          labels = c('A', 'B', 'C', 'D'),         
+          align = "vh", 
+          nrow = 2,
+          ncol = 2, 
+          rel_heights = c(1/2, 1/2))
+
+ggsave(prow_skiba, file="Graphs/percent_imp_skiba.png")
+
+```
